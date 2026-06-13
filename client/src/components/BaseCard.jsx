@@ -40,6 +40,7 @@ const BaseCard = ({
   variant = "glass",
   noPadding = false,
   as: Tag = "div",
+  style,
   ...rest
 }) => {
   const cardRef = useRef(null);
@@ -109,6 +110,10 @@ const BaseCard = ({
         hover && "hover:-translate-y-0.5",
         className,
       )}
+      style={{
+        "--accent-rgb": spotRgb,
+        ...style,
+      }}
       onMouseMove={hover ? handleMouseMove : undefined}
       onMouseEnter={hover ? handleMouseEnter : undefined}
       onMouseLeave={hover ? handleMouseLeave : undefined}

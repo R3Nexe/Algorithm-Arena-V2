@@ -157,7 +157,7 @@ const QuestionSetsTab = () => {
       {view === 'create' && (
         <motion.div initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} className="max-w-4xl mx-auto space-y-6">
           <form onSubmit={handlePublish} className="space-y-6">
-            <BaseCard className="p-6 space-y-4 border-l-4 border-l-accent">
+            <BaseCard>
               <h2 className="text-xl font-black text-primary">Set Details</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><label className="field-label">Set Title</label><input required className="field-input" placeholder="e.g. Dynamic Programming Basics" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></div>
@@ -182,7 +182,7 @@ const QuestionSetsTab = () => {
                 {form.questions.map((q,i)=>(
                   <motion.div key={i} initial={{opacity:0,height:0}} animate={{opacity:1,height:'auto'}} exit={{opacity:0,height:0}}>
                     <BaseCard className="p-5 space-y-4 relative overflow-hidden group">
-                      <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/50"/>
+
                       <div className="flex justify-between items-start">
                         <h3 className="font-bold text-primary flex items-center gap-2"><span className="w-6 h-6 rounded bg-white/10 flex items-center justify-center text-xs text-secondary">{i+1}</span> Question Config</h3>
                         {form.questions.length>1&&(<button type="button" onClick={()=>handleRemoveQuestion(i)} className="text-red-400 hover:text-red-300 p-1"><FiTrash2 size={16}/></button>)}

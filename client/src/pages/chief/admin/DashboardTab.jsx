@@ -16,19 +16,19 @@ const DashboardTab = ({ setActiveTab }) => {
   });
 
   const stats = [
-    { label: 'Total Members', value: summaryQ.data?.totalMembers || 0, icon: FiUsers, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { label: 'Active Clans', value: summaryQ.data?.activeClans || 0, icon: FiShield, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-    { label: 'Active This Week', value: summaryQ.data?.activeThisWeek || 0, icon: FiActivity, color: 'text-green-400', bg: 'bg-green-500/10' },
-    { label: 'Total Submissions', value: summaryQ.data?.totalSubmissions || 0, icon: FiCode, color: 'text-pink-400', bg: 'bg-pink-500/10' },
-    { label: 'Avg Completion', value: `${summaryQ.data?.avgCompletion || 0}%`, icon: FiPercent, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
-    { label: 'Pending Assign', value: summaryQ.data?.pendingAssignments || 0, icon: FiClock, color: 'text-orange-400', bg: 'bg-orange-500/10' },
+    { label: 'Total Members', value: summaryQ.data?.totalMembers || 0, icon: FiUsers, color: 'text-blue-400', bg: 'bg-blue-500/10', rgb: '96, 165, 250' },
+    { label: 'Active Clans', value: summaryQ.data?.activeClans || 0, icon: FiShield, color: 'text-purple-400', bg: 'bg-purple-500/10', rgb: '192, 132, 252' },
+    { label: 'Active This Week', value: summaryQ.data?.activeThisWeek || 0, icon: FiActivity, color: 'text-green-400', bg: 'bg-green-500/10', rgb: '74, 222, 128' },
+    { label: 'Total Submissions', value: summaryQ.data?.totalSubmissions || 0, icon: FiCode, color: 'text-pink-400', bg: 'bg-pink-500/10', rgb: '244, 114, 182' },
+    { label: 'Avg Completion', value: `${summaryQ.data?.avgCompletion || 0}%`, icon: FiPercent, color: 'text-yellow-400', bg: 'bg-yellow-500/10', rgb: '250, 204, 21' },
+    { label: 'Pending Assign', value: summaryQ.data?.pendingAssignments || 0, icon: FiClock, color: 'text-orange-400', bg: 'bg-orange-500/10', rgb: '251, 146, 60' },
   ];
 
   return (
     <div className="space-y-6">
       {/* Unassigned Members Alert */}
       {summaryQ.data?.pendingAssignments > 0 && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
           className="flex items-center justify-between p-4 rounded-xl border border-orange-500/30 bg-orange-500/10"
         >
@@ -51,7 +51,7 @@ const DashboardTab = ({ setActiveTab }) => {
           const Icon = stat.icon;
           return (
             <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-              <BaseCard className="p-4 flex flex-col gap-3">
+              <BaseCard className="p-4 flex flex-col gap-3" accentColor={stat.rgb} >
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${stat.bg}`}>
                   <Icon size={18} className={stat.color} />
                 </div>
@@ -70,7 +70,7 @@ const DashboardTab = ({ setActiveTab }) => {
         <div className="lg:col-span-2 space-y-4">
           <h2 className="text-sm font-bold text-secondary uppercase tracking-widest">Clan Performance Rankings</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {summaryQ.isLoading ? [...Array(4)].map((_, i) => <SkeletonCard key={i} />) : 
+            {summaryQ.isLoading ? [...Array(4)].map((_, i) => <SkeletonCard key={i} />) :
              (summaryQ.data?.clanPerformance || []).map((clan, i) => (
               <motion.div key={clan.tag} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}>
                 <BaseCard className="p-5 relative overflow-hidden group">
@@ -86,7 +86,7 @@ const DashboardTab = ({ setActiveTab }) => {
                   </div>
                   {/* GDG Progress bar */}
                   <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                    <motion.div 
+                    <motion.div
                       className={`h-full bg-gradient-to-r ${clan.color}`}
                       initial={{ width: 0 }}
                       animate={{ width: `${clan.completion}%` }}

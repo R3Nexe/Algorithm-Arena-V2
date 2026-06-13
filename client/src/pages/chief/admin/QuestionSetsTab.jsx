@@ -20,7 +20,7 @@ const QuestionSetsTab = () => {
   const [view, setView] = useState('list'); // 'list', 'history', 'create'
   const [importModalOpen, setImportModalOpen] = useState(false);
   const fileInputRef = useRef(null);
-  
+
   const setsQuery = useQuery({
     queryKey: ['admin-question-sets'],
     queryFn: async () => {
@@ -172,12 +172,11 @@ const QuestionSetsTab = () => {
                   </button>
                 )}
               </div>
-              
+
               <AnimatePresence>
                 {form.questions.map((q, i) => (
                   <motion.div key={i} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
                     <BaseCard className="p-5 space-y-4 relative overflow-hidden group">
-                      <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/50" />
                       <div className="flex justify-between items-start">
                         <h3 className="font-bold text-primary flex items-center gap-2">
                           <span className="w-6 h-6 rounded bg-white/10 flex items-center justify-center text-xs text-secondary">{i+1}</span>
@@ -249,8 +248,8 @@ const QuestionSetsTab = () => {
                     <div>
                       <h3 className="font-bold text-lg text-primary">{set.title}</h3>
                       <p className="text-xs text-secondary font-mono flex items-center gap-2 mt-1">
-                        <FiTarget className="text-accent"/> Target: {set.targetLevel} 
-                        <span className="text-white/20">|</span> 
+                        <FiTarget className="text-accent"/> Target: {set.targetLevel}
+                        <span className="text-white/20">|</span>
                         <FiClock className="text-orange-400"/> Due: {new Date(set.deadline).toLocaleDateString()}
                       </p>
                     </div>
@@ -290,22 +289,22 @@ const QuestionSetsTab = () => {
                   <h3 className="text-lg font-black text-primary flex items-center gap-2"><FiUploadCloud className="text-purple-400"/> Import Questions</h3>
                   <button onClick={() => setImportModalOpen(false)} className="text-tertiary hover:text-primary"><FiX size={20} /></button>
                 </div>
-                
+
                 <p className="text-sm text-secondary">Upload a <strong>.json</strong>, <strong>.csv</strong>, or <strong>.docx</strong> file to bulk import challenges into the database.</p>
-                
-                <div 
+
+                <div
                   className="border-2 border-dashed border-white/10 rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-purple-400/50 hover:bg-purple-400/5 transition-all text-center"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <FiUploadCloud className="text-4xl text-tertiary mb-3" />
                   <p className="font-bold text-primary mb-1">Click or drag file to upload</p>
                   <p className="text-xs text-tertiary">Supported: JSON, CSV, DOCX</p>
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    accept=".json,.csv,.docx" 
-                    onChange={handleFileChange} 
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept=".json,.csv,.docx"
+                    onChange={handleFileChange}
                   />
                 </div>
 

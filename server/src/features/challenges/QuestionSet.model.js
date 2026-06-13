@@ -31,6 +31,13 @@ const questionSetSchema = new mongoose.Schema({
       lang: String,
       langSlug: String,
       code: String
+    }],
+    functionName: { type: String, default: '' },
+    testCases: [{
+      label: { type: String },
+      args: { type: mongoose.Schema.Types.Mixed },
+      expected: { type: String },
+      _id: false
     }]
   }],
   createdBy: {

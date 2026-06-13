@@ -12,7 +12,7 @@ import PageHeader from '../components/PageHeader';
 // --- Subcomponents for Tabs ---
 import DashboardTab from './admin/DashboardTab';
 import QuestionSetsTab from './admin/QuestionSetsTab';
-import ChallengesTab from './admin/ChallengesTab';
+
 import ClanManagerTab from './admin/ClanManagerTab';
 import NoticeBoardTab from './admin/NoticeBoardTab';
 import ResourcesTab from './admin/ResourcesTab';
@@ -26,7 +26,7 @@ const AdminPanel = () => {
     { id: 'dashboard', label: 'Overview', icon: FiActivity },
     { id: 'review', label: 'Review Work', icon: FiEye },
     { id: 'sets', label: 'Question Sets', icon: FiCode },
-    { id: 'challenges', label: 'Challenges', icon: FiZap },
+
     { id: 'clans', label: 'Clan Manager', icon: FiShield },
     { id: 'notices', label: 'Notice Board', icon: FiBell },
     { id: 'resources', label: 'Resources', icon: FiFolder },
@@ -83,7 +83,7 @@ const AdminPanel = () => {
           {activeTab === 'dashboard' && <DashboardTab setActiveTab={setActiveTab} />}
           {activeTab === 'review' && <ReviewTab />}
           {activeTab === 'sets' && <QuestionSetsTab />}
-          {activeTab === 'challenges' && <ChallengesTab />}
+
           {activeTab === 'clans' && <ClanManagerTab />}
           {activeTab === 'notices' && <NoticeBoardTab />}
           {activeTab === 'resources' && <ResourcesTab />}

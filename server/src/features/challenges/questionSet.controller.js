@@ -73,6 +73,8 @@ const createQuestionSet = async (req, res, next) => {
         category: q.category || 'Logic',
         tags: q.tags || [],
         codeSnippets: q.codeSnippets || [],
+        functionName: q.functionName || '',
+        testCases: q.testCases || [],
         questionSetId: set._id
       }));
       await Challenge.insertMany(challengesToInsert);

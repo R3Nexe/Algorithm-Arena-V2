@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion, useScroll, useTransform } from "framer-motion";
@@ -24,7 +24,10 @@ const GridBackground = () => (
   <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
     {/* Perspective grid */}
     <svg
-      className="absolute top-0 left-0 w-full h-full opacity-[.1] dark:opacity-[.1]"
+      className="absolute top-0 left-0 w-full h-full opacity-[.1] dark:opacity-[.1] transition-transform duration-300 ease-out"
+      style={{
+        transform: "translate(calc(var(--mouse-offset-x, 0) * -20px), calc(var(--mouse-offset-y, 0) * -20px))",
+      }}
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
@@ -40,14 +43,30 @@ const GridBackground = () => (
       <rect width="100%" height="100%" fill="url(#grid)" />
     </svg>
 
+    {/* Spotlight on the grid */}
+    <div
+      className="absolute inset-0 opacity-45 dark:opacity-30 transition-opacity duration-300"
+      style={{
+        background: "radial-gradient(400px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), rgba(var(--accent-rgb), 0.15), transparent 90%)",
+      }}
+    />
+
     {/* Orbs */}
     <div
-      className="orb orb-1"
-      style={{ filter: "blur(80px)", opacity: 0.35 }}
+      className="orb orb-1 transition-transform duration-500 ease-out"
+      style={{
+        filter: "blur(80px)",
+        opacity: 0.35,
+        transform: "translate(calc(var(--mouse-offset-x, 0) * 40px), calc(var(--mouse-offset-y, 0) * 40px))",
+      }}
     />
     <div
-      className="orb orb-2"
-      style={{ filter: "blur(100px)", opacity: 0.25 }}
+      className="orb orb-2 transition-transform duration-500 ease-out"
+      style={{
+        filter: "blur(100px)",
+        opacity: 0.25,
+        transform: "translate(calc(var(--mouse-offset-x, 0) * -40px), calc(var(--mouse-offset-y, 0) * -40px))",
+      }}
     />
 
     {/* Accent cross-hair lines */}
@@ -109,12 +128,13 @@ const SNIPPETS = [
   "node->left->height",
 ];
 
-const FloatingSnippet = ({ text, style }) => (
+const FloatingSnippet = ({ text, style, depth, rotation }) => (
   <span
-    className="absolute font-mono text-[11px] font-bold select-none pointer-events-none"
+    className="absolute font-mono text-[11px] font-bold select-none pointer-events-none transition-transform duration-300 ease-out"
     style={{
       color: `rgba(var(--accent-rgb), .2)`,
       letterSpacing: "0.05em",
+      transform: `rotate(${rotation}deg) translate(calc(var(--mouse-offset-x, 0) * ${depth * -40}px), calc(var(--mouse-offset-y, 0) * ${depth * -40}px))`,
       ...style,
     }}
   >
@@ -159,9 +179,25 @@ const getDifficultyRGB = (diff) => {
 const Home = () => {
   const { isAuthenticated } = useAuth();
   const heroRef = useRef(null);
+  const homeRef = useRef(null);
   const { scrollY } = useScroll();
   const heroY = useTransform(scrollY, [0, 400], [0, -60]);
   const heroOpacity = useTransform(scrollY, [0, 300], [1, 0.1]);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      const el = homeRef.current;
+      if (!el) return;
+      const x = (e.clientX / window.innerWidth) - 0.5;
+      const y = (e.clientY / window.innerHeight) - 0.5;
+      el.style.setProperty("--mouse-x", `${e.clientX}px`);
+      el.style.setProperty("--mouse-y", `${e.clientY}px`);
+      el.style.setProperty("--mouse-offset-x", `${x}`);
+      el.style.setProperty("--mouse-offset-y", `${y}`);
+    };
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
 
   const challengesQuery = useQuery({
     queryKey: ["home-challenges"],
@@ -188,23 +224,28 @@ const Home = () => {
   const pendingTasks = submissionsQuery.data || [];
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden bg-app text-primary font-sans selection:bg-accent selection:text-white">
+    <div ref={homeRef} className="min-h-screen flex flex-col relative overflow-hidden bg-app text-primary font-sans selection:bg-accent selection:text-white">
       <GridBackground />
 
       {/* Floating snippets — decorative only */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        {SNIPPETS.map((s, i) => (
-          <FloatingSnippet
-            key={i}
-            text={s}
-            style={{
-              top: `${8 + ((i * 7.5) % 85)}%`,
-              left: `${3 + ((i * 11) % 94)}%`,
-              opacity: 0.6 + (i % 3) * 0.15,
-              transform: `rotate(${-8 + (i % 5) * 4}deg)`,
-            }}
-          />
-        ))}
+        {SNIPPETS.map((s, i) => {
+          const depth = 0.4 + (i % 4) * 0.2;
+          const rotation = -8 + (i % 5) * 4;
+          return (
+            <FloatingSnippet
+              key={i}
+              text={s}
+              depth={depth}
+              rotation={rotation}
+              style={{
+                top: `${8 + ((i * 7.5) % 85)}%`,
+                left: `${3 + ((i * 11) % 94)}%`,
+                opacity: .6 + (i % 3) * 0.75,
+              }}
+            />
+          );
+        })}
       </div>
 
       {/* ── Navigation ── */}

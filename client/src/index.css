@@ -1,4 +1,12 @@
+/* ==========================================================================
+   FONT CONFIGURATION AREA (Change your fonts here!)
+   ========================================================================== */
+/* 1. Import your Google Fonts or custom font packages here: */
 @import url("https://rsms.me/inter/inter.css");
+/* Example alternative imports (uncomment to test): */
+@import url('https://fonts.googleapis.com/css2?family=Michroma&family=Orbitron:wght@400..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
 
 /* Tailwind Engine Directives */
 @tailwind base;
@@ -6,9 +14,11 @@
 @tailwind utilities;
 
 :root {
-    --font-stack:
-        "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-        sans-serif;
+    /* 2. Set your primary sans-serif and monospace font stacks here: */
+    --font-sans: "michroma", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    --font-stack: var(--font-sans);
     --font-size-display: clamp(2rem, 3.2vw, 3.75rem);
     --font-size-h1: clamp(1.6rem, 2.4vw, 2.4rem);
     --font-size-h2: clamp(1.2rem, 1.6vw, 1.8rem);
@@ -55,11 +65,9 @@
     --field-bg: rgba(0, 0, 0, 0.03);
     --field-border: rgba(0, 0, 0, 0.08);
 
-    --glass-spotlight: radial-gradient(
-        600px circle at var(--mouse-x) var(--mouse-y),
-        rgba(79, 70, 229, 0.08),
-        transparent 40%
-    );
+    --glass-spotlight: radial-gradient(600px circle at var(--mouse-x) var(--mouse-y),
+            rgba(79, 70, 229, 0.08),
+            transparent 40%);
 }
 
 [data-theme="dark"] {
@@ -81,11 +89,9 @@
     --orb-2: rgba(217, 70, 239, 0.12);
     --field-bg: rgba(255, 255, 255, 0.04);
     --field-border: rgba(255, 255, 255, 0.08);
-    --glass-spotlight: radial-gradient(
-        600px circle at var(--mouse-x) var(--mouse-y),
-        rgba(99, 102, 241, 0.15),
-        transparent 40%
-    );
+    --glass-spotlight: radial-gradient(600px circle at var(--mouse-x) var(--mouse-y),
+            rgba(99, 102, 241, 0.15),
+            transparent 40%);
 }
 
 * {
@@ -179,19 +185,18 @@ body {
         transform: translate(40px, 20px) scale(1.05);
     }
 }
+
 .blueprint-border {
     position: relative;
     background:
         padding-box,
-        conic-gradient(
-                from var(--border-angle),
-                transparent,
-                var(--accent-primary),
-                transparent
-            )
-            border-box;
+        conic-gradient(from var(--border-angle),
+            transparent,
+            var(--accent-primary),
+            transparent) border-box;
     border: 1px solid transparent;
 }
+
 .macos-glass {
     background: var(--glass-surface);
     backdrop-filter: blur(4px) saturate(120%);
@@ -204,9 +209,11 @@ body {
 .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb {
     background: var(--fg-tertiary);
     border-radius: 4px;
@@ -282,8 +289,7 @@ body {
     .field-textarea:focus,
     .field-select:focus {
         border-color: var(--accent-primary);
-        box-shadow: 0 0 0 2px
-            color-mix(in srgb, var(--accent-primary) 25%, transparent);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 25%, transparent);
         outline: none;
     }
 
@@ -362,11 +368,9 @@ body {
 
     .chip-btn.active {
         color: var(--fg-primary);
-        border-color: color-mix(
-            in srgb,
-            var(--accent-primary) 90%,
-            var(--glass-border-color)
-        );
+        border-color: color-mix(in srgb,
+                var(--accent-primary) 90%,
+                var(--glass-border-color));
         background: color-mix(in srgb, var(--accent-primary) 15%, transparent);
     }
 

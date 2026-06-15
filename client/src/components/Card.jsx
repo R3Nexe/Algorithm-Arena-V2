@@ -75,7 +75,7 @@ const ChallengeCard = ({
         "relative group overflow-hidden transition-all duration-300",
         "bg-white/5 dark:bg-black/5",
         "border border-black/10 dark:border-white/10",
-        "rounded-[2rem] p-8 backdrop-blur-xs hover:backdrop-blur-lg",
+        "rounded-[2rem] p-8 backdrop-blur-md hover:backdrop-blur-xl",
         hoverEffect && "hover:-translate-y-1",
         className,
       )}

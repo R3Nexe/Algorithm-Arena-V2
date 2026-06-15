@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiArrowRight, FiLock, FiMail, FiUser } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import Card from '../components/Card';
+import PixelBlast from '../components/PixelBlast';
+import ThemeToggle from '../components/ThemeToggle';
 import { api } from '../lib/api';
 import { useAuth } from '../context/useAuth';
 import Logo from '../components/Logo';
@@ -13,6 +15,27 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return document.documentElement.getAttribute('data-theme') || 'dark';
+    }
+    return 'dark';
+  });
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+      setTheme(currentTheme);
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   const canSubmit = useMemo(() => {
     return formData.username.trim().length >= 3 && formData.email.trim().length > 0 && formData.password.length >= 6;
@@ -54,24 +77,40 @@ const Register = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-between p-4 relative overflow-hidden">
-      <div className="cosmos-background absolute inset-0 z-0">
-        <div className="orb orb-1 opacity-50"></div>
-        <div className="orb orb-2 opacity-50"></div>
+
+
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <PixelBlast
+          variant="square"
+          pixelSize={4}
+          color={theme === 'dark' ? '#4f46e5' : '#4f46e5'}
+          patternScale={2}
+          patternDensity={1}
+          pixelSizeJitter={0}
+          enableRipples
+          rippleSpeed={0.4}
+          rippleThickness={0.12}
+          rippleIntensityScale={1.5}
+          liquid={false}
+          liquidStrength={0.12}
+          liquidRadius={1.2}
+          liquidWobbleSpeed={5}
+          speed={0.5}
+          edgeFade={0.25}
+          transparent
+        />
       </div>
 
       <div className="w-full max-w-md relative z-10 my-auto py-8">
-        <div className="text-center mb-8">
-          {/* GDG Branding */}
-          <div className="flex flex-col items-center gap-3 mb-5">
-            <Logo variant="hybrid" size="w-28 h-14" imgClassName="object-cover" />
+        <Card className="shadow-2xl shadow-black/10 dark:shadow-black/50" hover={true} variant='glass'>
+          <div className="text-center mb-8">
+            {/* GDG Branding */}
+            <div className="flex flex-col items-center gap-3 mb-5">
+              <Logo variant="hybrid" size="w-28 h-14" imgClassName="object-cover" />
+            </div>
+            <h2 className="text-sm font-medium text-secondary">Join the ranks.</h2>
           </div>
-          <Link to="/" className="inline-flex items-center justify-center gap-2 group mb-2">
-            <Logo variant="arena" size="sm" showText={true} />
-          </Link>
-          <h2 className="text-sm font-medium text-secondary">Join the ranks.</h2>
-        </div>
 
-        <Card className="shadow-2xl shadow-black/5 backdrop-blur-2xl">
           <form onSubmit={handleSubmit} className="space-y-6" noValidate>
             {errors.form && (
               <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm font-medium flex items-center gap-2">
@@ -164,7 +203,7 @@ const Register = () => {
       </div>
 
       {/* Footer */}
-      <footer className="w-full z-10 border-t border-glass-border/40 py-6 text-center bg-black/5 mt-8">
+
         <p className="text-sm text-secondary">
           Copyright 2026 Algorithm Arena. Built for{" "}
           <span className="text-primary font-semibold">
@@ -172,7 +211,7 @@ const Register = () => {
           </span>
           .
         </p>
-      </footer>
+
     </div>
   );
 };

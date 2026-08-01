@@ -118,10 +118,99 @@ const McqModal = ({ question, onClose, onGraded }) => {
   );
 };
 
+const WrittenModal = ({ question, onClose, onGraded }) => {
+  const [answer, setAnswer] = useState('');
+  const [modelAnswer, setModelAnswer] = useState(null); // set once submitted → reveals
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (!answer.trim()) return;
+    setBusy(true);
+    try {
+      const res = await api.post('/api/submissions/written', {
+        challengeId: question._id,
+        answerText: answer.trim(),
+      });
+      setModelAnswer(res.data.data.modelAnswer);
+      onGraded();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not submit answer');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const selfAssess = async (gotIt) => {
+    setBusy(true);
+    try {
+      await api.post('/api/challenges/domain/self-assess', { challengeId: question._id, gotIt });
+      toast.success(gotIt ? 'Marked as mastered' : 'Saved for review');
+      onGraded();
+      onClose();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not save');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-surface-1 p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-start justify-between">
+          <h3 className="text-lg font-semibold text-white">{question.title}</h3>
+          <button onClick={onClose} className="text-white/40 hover:text-white"><FiX /></button>
+        </div>
+        <p className="mb-4 whitespace-pre-wrap text-sm text-white/70">{question.description}</p>
+
+        {modelAnswer == null ? (
+          <>
+            <textarea
+              className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/90 focus:border-indigo-400 focus:outline-none"
+              rows={6}
+              placeholder="Write your answer…"
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+            />
+            <button
+              onClick={submit}
+              disabled={!answer.trim() || busy}
+              className="mt-4 w-full rounded-lg bg-indigo-500 py-2 text-sm font-medium text-white hover:bg-indigo-400 disabled:opacity-50"
+            >
+              {busy ? 'Submitting…' : 'Submit & reveal model answer'}
+            </button>
+          </>
+        ) : (
+          <div className="space-y-4 text-sm">
+            <div>
+              <p className="mb-1 text-xs uppercase tracking-wide text-white/40">Your answer</p>
+              <p className="whitespace-pre-wrap rounded-lg bg-white/5 p-3 text-white/80">{answer}</p>
+            </div>
+            <div>
+              <p className="mb-1 text-xs uppercase tracking-wide text-emerald-400/70">Model answer</p>
+              <p className="whitespace-pre-wrap rounded-lg border border-emerald-400/20 bg-emerald-400/5 p-3 text-white/80">{modelAnswer}</p>
+            </div>
+            <p className="text-white/50">How did you do? A reviewer will separately score your answer for points.</p>
+            <div className="flex gap-3">
+              <button onClick={() => selfAssess(true)} disabled={busy} className="flex-1 rounded-lg bg-emerald-500 py-2 font-medium text-white hover:bg-emerald-400 disabled:opacity-50">
+                Got it
+              </button>
+              <button onClick={() => selfAssess(false)} disabled={busy} className="flex-1 rounded-lg bg-white/10 py-2 font-medium text-white hover:bg-white/15 disabled:opacity-50">
+                Review later
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const InterviewPrep = () => {
   const queryClient = useQueryClient();
   const [activeTag, setActiveTag] = useState(null);
   const [openMcq, setOpenMcq] = useState(null);
+  const [openWritten, setOpenWritten] = useState(null);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['domain-pool'],
@@ -143,13 +232,13 @@ const InterviewPrep = () => {
   );
 
   const openQuestion = (item) => {
-    if (item.type !== 'mcq') return; // written handled in the written view
     if (item.masteryStatus === 'Mastered') return;
     if (item.locked) {
       toast(`Locked — unlocks in ${untilLabel(item.nextAttemptAt)}`);
       return;
     }
-    setOpenMcq(item);
+    if (item.type === 'mcq') setOpenMcq(item);
+    else setOpenWritten(item);
   };
 
   return (
@@ -185,7 +274,7 @@ const InterviewPrep = () => {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((item) => {
-            const answerable = item.type === 'mcq' && item.masteryStatus !== 'Mastered' && !item.locked;
+            const answerable = item.masteryStatus !== 'Mastered' && !item.locked;
             return (
               <button
                 key={item._id}
@@ -212,6 +301,14 @@ const InterviewPrep = () => {
         <McqModal
           question={openMcq}
           onClose={() => setOpenMcq(null)}
+          onGraded={() => queryClient.invalidateQueries({ queryKey: ['domain-pool'] })}
+        />
+      )}
+
+      {openWritten && (
+        <WrittenModal
+          question={openWritten}
+          onClose={() => setOpenWritten(null)}
           onGraded={() => queryClient.invalidateQueries({ queryKey: ['domain-pool'] })}
         />
       )}

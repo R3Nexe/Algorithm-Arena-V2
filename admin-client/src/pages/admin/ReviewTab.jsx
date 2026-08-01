@@ -2,12 +2,91 @@ import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { FiCheck, FiCode, FiEye, FiFilter, FiClock, FiMessageSquare } from 'react-icons/fi';
+import toast from 'react-hot-toast';
+import { FiCheck, FiCode, FiEye, FiFilter, FiClock, FiMessageSquare, FiX } from 'react-icons/fi';
 import BaseCard from '../../components/BaseCard';
 import SkeletonCard from '../../components/SkeletonCard';
 import EmptyState from '../../components/EmptyState';
 import { api } from '../../lib/api';
 import { encodeReviewQueue, buildReviewUrl } from '../../lib/reviewQueue';
+
+// Written domain answers have no code to open in the code-review page — they are reviewed
+// inline here, with the participant's answer shown next to the uploaded model answer.
+const WrittenReviewCard = ({ sub, onReviewed }) => {
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState('');
+  const [showReject, setShowReject] = useState(false);
+
+  const grade = async (status) => {
+    setBusy(true);
+    try {
+      await api.put(`/api/submissions/${sub._id}`, { status, ...(feedback ? { feedback } : {}) });
+      toast.success(status === 'Accepted' ? 'Approved — points awarded' : 'Rejected');
+      onReviewed();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not save review');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <BaseCard className="p-5 flex flex-col gap-3 h-full">
+      <div className="flex justify-between items-start">
+        <div className="min-w-0 flex-1">
+          <p className="font-bold text-primary truncate">{sub.challengeId?.title || 'Written question'}</p>
+          <p className="text-xs text-secondary mt-1">
+            By: <span className="font-semibold text-primary">{sub.userId?.username || 'Unknown'}</span>
+          </p>
+        </div>
+        <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest shrink-0 ml-2">Written</span>
+      </div>
+
+      <div>
+        <p className="text-[10px] uppercase font-bold tracking-widest text-tertiary mb-1">Answer</p>
+        <p className="whitespace-pre-wrap rounded-lg bg-white/5 p-3 text-xs text-secondary max-h-40 overflow-y-auto">{sub.answerText || '—'}</p>
+      </div>
+      <div>
+        <p className="text-[10px] uppercase font-bold tracking-widest text-emerald-400/70 mb-1">Model answer</p>
+        <p className="whitespace-pre-wrap rounded-lg border border-emerald-400/20 bg-emerald-400/5 p-3 text-xs text-secondary max-h-40 overflow-y-auto">{sub.challengeId?.modelAnswer || '—'}</p>
+      </div>
+
+      {sub.status === 'Pending' ? (
+        <div className="mt-auto space-y-2">
+          {showReject && (
+            <textarea
+              className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-primary focus:outline-none"
+              rows={2}
+              placeholder="Feedback (optional)"
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+            />
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => grade('Accepted')}
+              disabled={busy}
+              className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-green-500/20 text-green-400 border border-green-500/30 py-2 text-xs font-bold hover:bg-green-500/30 disabled:opacity-50"
+            >
+              <FiCheck /> Approve
+            </button>
+            <button
+              onClick={() => (showReject ? grade('Rejected') : setShowReject(true))}
+              disabled={busy}
+              className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 py-2 text-xs font-bold hover:bg-red-500/30 disabled:opacity-50"
+            >
+              <FiX /> Reject
+            </button>
+          </div>
+        </div>
+      ) : (
+        <span className={`mt-auto text-[10px] font-black uppercase tracking-widest ${sub.status === 'Accepted' ? 'text-green-400' : 'text-red-400'}`}>
+          {sub.status === 'Accepted' ? 'Approved' : 'Rejected'}
+        </span>
+      )}
+    </BaseCard>
+  );
+};
 
 const ReviewTab = () => {
 
@@ -76,7 +155,15 @@ const ReviewTab = () => {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {submissions.map((sub, i) => (
+            {submissions.map((sub, i) => {
+              if (sub.challengeId?.type === 'written') {
+                return (
+                  <motion.div key={sub._id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}>
+                    <WrittenReviewCard sub={sub} onReviewed={() => submissionsQuery.refetch()} />
+                  </motion.div>
+                );
+              }
+              return (
               <motion.div key={sub._id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}>
                 <BaseCard className="p-5 flex flex-col gap-3 group hover:border-accent/30 transition-colors h-full">
                   <div className="flex justify-between items-start">
@@ -124,7 +211,8 @@ const ReviewTab = () => {
                   )}
                 </BaseCard>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Pagination */}

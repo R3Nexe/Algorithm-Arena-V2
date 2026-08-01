@@ -130,7 +130,9 @@ const getSubmissions = async (req, res, next) => {
       Submission.countDocuments(filter),
       Submission.find(filter)
         .populate('userId', 'username email role clan')
-        .populate('challengeId', 'title difficulty points')
+        // type + modelAnswer let the reviewer queue render written domain answers inline;
+        // this endpoint is chief/admin-only, so the model answer is not exposed to participants.
+        .populate('challengeId', 'title difficulty points type modelAnswer')
         .populate('reviewedBy', 'username role')
         .sort(sort)
         .skip(skip)

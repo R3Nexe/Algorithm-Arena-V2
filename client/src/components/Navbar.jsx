@@ -13,7 +13,8 @@ import {
   FiSettings,
   FiChevronDown,
   FiFolder,
-  FiStar
+  FiStar,
+  FiHelpCircle
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
@@ -31,6 +32,7 @@ const Navbar = ({ onLogout }) => {
     const items = [
       { name: "Dashboard", path: "/dashboard", icon: FiGrid },
       { name: "Leaderboard", path: "/leaderboard", icon: FiAward },
+      { name: "Interview Prep", path: "/interview-prep", icon: FiHelpCircle },
       { name: "Clan", path: "/clans", icon: FiUsers },
       { name: "Archives", path: "/resources", icon: FiFolder },
     ];

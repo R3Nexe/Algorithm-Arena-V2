@@ -11,7 +11,21 @@ brain/
 server/DEPLOYMENT_NOTES.md
 CLAUDE.MD
 .playwright-mcp/
-docs/
 .superpowers/sdd/
 .claude/
 CLAUDE.md
+# Added by code-review-graph
+.code-review-graph/
+.kiro/steering/
+.qoder/
+.gemini/
+.cursor/
+.codebuddy/
+.cursorrules
+.mcp.json
+CODEBUDDY.md
+GEMINI.md
+AGENTS.md
+opencode.jsonc
+QODER.md
+.windsurfrules

@@ -104,8 +104,30 @@ const QuestionCard = ({ item, index }) => {
   );
 };
 
+// Top-level domain of a question: its category, or "General" when uncategorised.
+const domainOf = (it) => (it.category && it.category !== "Logic" ? it.category : "General");
+
+const STATUS_FILTERS = [
+  { id: "all", label: "All" },
+  { id: "mastered", label: "Mastered" },
+  { id: "review", label: "Under review" },
+];
+
+const Chip = ({ active, onClick, children }) => (
+  <button
+    onClick={onClick}
+    className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+      active ? "bg-accent text-white" : "bg-white/5 text-secondary hover:text-primary"
+    }`}
+  >
+    {children}
+  </button>
+);
+
 const InterviewPrep = () => {
-  const [activeTag, setActiveTag] = useState(null);
+  const [activeDomain, setActiveDomain] = useState(null); // top-level category
+  const [activeSub, setActiveSub] = useState(null); // sub-topic tag
+  const [status, setStatus] = useState("all");
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["domain-pool"],
@@ -115,11 +137,19 @@ const InterviewPrep = () => {
     },
   });
 
-  const tags = useMemo(() => {
-    const set = new Set();
-    items.forEach((it) => (it.tags || []).forEach((t) => set.add(t)));
+  // Top-level domains present in the pool.
+  const domains = useMemo(() => {
+    const set = new Set(items.map(domainOf));
     return Array.from(set).sort();
   }, [items]);
+
+  // Sub-topics available within the selected domain (or all, when none selected).
+  const subTopics = useMemo(() => {
+    const scope = activeDomain ? items.filter((it) => domainOf(it) === activeDomain) : items;
+    const set = new Set();
+    scope.forEach((it) => (it.tags || []).forEach((t) => set.add(t)));
+    return Array.from(set).sort();
+  }, [items, activeDomain]);
 
   const stats = useMemo(() => {
     let mastered = 0;
@@ -131,10 +161,20 @@ const InterviewPrep = () => {
     return { mastered, due, total: items.length };
   }, [items]);
 
-  const visible = useMemo(
-    () => (activeTag ? items.filter((it) => (it.tags || []).includes(activeTag)) : items),
-    [items, activeTag]
-  );
+  const visible = useMemo(() => {
+    return items.filter((it) => {
+      if (activeDomain && domainOf(it) !== activeDomain) return false;
+      if (activeSub && !(it.tags || []).includes(activeSub)) return false;
+      if (status === "mastered" && it.masteryStatus !== "Mastered") return false;
+      if (status === "review" && it.masteryStatus !== "NeedsReview") return false;
+      return true;
+    });
+  }, [items, activeDomain, activeSub, status]);
+
+  const pickDomain = (d) => {
+    setActiveDomain(d);
+    setActiveSub(null); // sub-topics are scoped to a domain
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
@@ -171,28 +211,54 @@ const InterviewPrep = () => {
         </div>
       )}
 
-      {/* tag filter */}
-      {tags.length > 0 && (
-        <div className="mt-6 flex flex-wrap gap-2">
-          <button
-            onClick={() => setActiveTag(null)}
-            className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-              activeTag == null ? "bg-accent text-white" : "bg-white/5 text-secondary hover:text-primary"
-            }`}
-          >
-            All
-          </button>
-          {tags.map((t) => (
-            <button
-              key={t}
-              onClick={() => setActiveTag(t)}
-              className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                activeTag === t ? "bg-accent text-white" : "bg-white/5 text-secondary hover:text-primary"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+      {/* Filters: domain (top-level) + status, then sub-topics scoped to the domain */}
+      {stats.total > 0 && (
+        <div className="mt-6 space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {/* top-level domains */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Chip active={activeDomain == null} onClick={() => pickDomain(null)}>
+                All domains
+              </Chip>
+              {domains.map((d) => (
+                <Chip key={d} active={activeDomain === d} onClick={() => pickDomain(d)}>
+                  {d}
+                </Chip>
+              ))}
+            </div>
+
+            {/* mastery status — segmented */}
+            <div className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-subtle bg-white/[0.03] p-1">
+              {STATUS_FILTERS.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setStatus(s.id)}
+                  className={`rounded-lg px-3 py-1 text-xs font-bold transition-all ${
+                    status === s.id ? "bg-accent text-white" : "text-secondary hover:text-primary"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* sub-topics within the chosen domain */}
+          {activeDomain && subTopics.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-subtle pt-3">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-tertiary">
+                {activeDomain}
+              </span>
+              <Chip active={activeSub == null} onClick={() => setActiveSub(null)}>
+                All
+              </Chip>
+              {subTopics.map((t) => (
+                <Chip key={t} active={activeSub === t} onClick={() => setActiveSub(t)}>
+                  {t}
+                </Chip>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -205,11 +271,19 @@ const InterviewPrep = () => {
             ))}
           </div>
         ) : visible.length === 0 ? (
-          <EmptyState
-            title="Nothing here yet"
-            description="Domain questions appear here once an organiser adds them. Check back soon."
-            icon={FiHelpCircle}
-          />
+          items.length === 0 ? (
+            <EmptyState
+              title="Nothing here yet"
+              description="Domain questions appear here once an organiser adds them. Check back soon."
+              icon={FiHelpCircle}
+            />
+          ) : (
+            <EmptyState
+              title="No questions match"
+              description="Try a different domain, sub-topic, or status filter."
+              icon={FiHelpCircle}
+            />
+          )
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {visible.map((item, i) => (

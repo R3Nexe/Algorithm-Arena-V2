@@ -56,6 +56,7 @@ const domainQuestionObject = z
     description: z.string().trim().min(10),
     difficulty: z.enum(['Easy', 'Medium', 'Hard']).default('Easy'),
     points: z.coerce.number().int().positive().max(10000).optional(),
+    category: z.string().trim().min(2).max(80).optional(),
     tags: z.array(z.string().trim()).optional().default([]),
     ...domainFields,
     type: z.enum(['mcq', 'written']),

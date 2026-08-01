@@ -12,6 +12,7 @@ const emptyForm = () => ({
   title: '',
   description: '',
   difficulty: 'Easy',
+  category: '',
   tags: '',
   options: ['', ''],
   correctOption: 0,
@@ -24,6 +25,7 @@ const formFromQuestion = (q) => ({
   title: q.title || '',
   description: q.description || '',
   difficulty: q.difficulty || 'Easy',
+  category: q.category && q.category !== 'Logic' ? q.category : '',
   tags: (q.tags || []).join(', '),
   options: q.options?.length ? q.options : ['', ''],
   correctOption: q.correctOption ?? 0,
@@ -99,6 +101,7 @@ const DomainQuestionsTab = () => {
       title: form.title.trim(),
       description: form.description.trim(),
       difficulty: form.difficulty,
+      ...(form.category.trim() ? { category: form.category.trim() } : {}),
       tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
     };
     if (form.type === 'mcq') {
@@ -208,11 +211,18 @@ const DomainQuestionsTab = () => {
             <input className={inputCls} placeholder="Title" value={form.title} onChange={(e) => set({ title: e.target.value })} />
             <textarea className={inputCls} rows={3} placeholder="Question / prompt" value={form.description} onChange={(e) => set({ description: e.target.value })} />
 
+            <input
+              className={inputCls}
+              placeholder="Domain / top-level category (e.g. Data Science, System Design)"
+              value={form.category}
+              onChange={(e) => set({ category: e.target.value })}
+            />
+
             <div className="flex gap-3">
               <select className={inputCls} value={form.difficulty} onChange={(e) => set({ difficulty: e.target.value })}>
                 {DIFFICULTIES.map((d) => (<option key={d} value={d}>{d}</option>))}
               </select>
-              <input className={inputCls} placeholder="Tags (comma separated)" value={form.tags} onChange={(e) => set({ tags: e.target.value })} />
+              <input className={inputCls} placeholder="Sub-topics, comma separated (e.g. RAG, Imputation)" value={form.tags} onChange={(e) => set({ tags: e.target.value })} />
             </div>
 
             {form.type === 'mcq' ? (
@@ -296,7 +306,10 @@ const DomainQuestionsTab = () => {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-white">{q.title}</p>
-                  <p className="text-xs text-white/40">{q.difficulty} · {(q.tags || []).join(', ') || 'no tags'}</p>
+                  <p className="text-xs text-white/40">
+                    {q.category && q.category !== 'Logic' ? `${q.category} · ` : ''}
+                    {q.difficulty} · {(q.tags || []).join(', ') || 'no sub-topics'}
+                  </p>
                 </div>
                 <button onClick={() => startEdit(q)} className="rounded-lg p-2 text-white/50 hover:bg-white/5 hover:text-indigo-300" title="Edit"><FiEdit2 /></button>
                 <button onClick={() => onDelete(q)} className="rounded-lg p-2 text-white/50 hover:bg-white/5 hover:text-red-400" title="Delete"><FiTrash2 /></button>

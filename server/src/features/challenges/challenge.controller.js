@@ -432,7 +432,7 @@ const browseDomainPool = async (req, res, next) => {
     }
 
     const challenges = await Challenge.find(filter)
-      .select('title description type difficulty points tags options createdAt')
+      .select('title description type difficulty points category tags options createdAt')
       .lean();
 
     const progresses = await DomainProgress.find({
@@ -476,7 +476,7 @@ const getDomainQuestionById = async (req, res, next) => {
   try {
     const DomainProgress = require('./DomainProgress.model');
     const challenge = await Challenge.findOne({ _id: req.params.id, type: { $in: ['mcq', 'written'] } })
-      .select('title description type difficulty points tags options createdAt')
+      .select('title description type difficulty points category tags options createdAt')
       .lean();
     if (!challenge) {
       res.status(404);

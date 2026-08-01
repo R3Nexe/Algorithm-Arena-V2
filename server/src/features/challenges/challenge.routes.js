@@ -13,6 +13,7 @@ const {
   browseDomainPool,
   selfAssessDomain,
   bulkCreateDomainQuestions,
+  getDueForReview,
 } = require('./challenge.controller');
 
 const { protect, admin } = require('../../../middleware/auth');
@@ -44,6 +45,7 @@ router.get('/fetch-leetcode-details', protect, admin, getLeetCodeDetails);
 
 // Domain-question pool browse (must precede '/:id' so 'domain' isn't read as an id).
 router.get('/domain', protect, browseDomainPool);
+router.get('/domain/due', protect, getDueForReview);
 router.post('/domain/self-assess', protect, selfAssessDomain);
 router.post('/domain/bulk', protect, admin, bulkCreateDomainQuestions);
 

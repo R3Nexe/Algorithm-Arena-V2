@@ -534,11 +534,44 @@ const bulkCreateDomainQuestions = async (req, res, next) => {
   }
 };
 
+// The caller's domain questions that are due for review: NeedsReview and off cooldown.
+// Powers the dashboard reminder widget and nav badge (pull-based, no push).
+const getDueForReview = async (req, res, next) => {
+  try {
+    const DomainProgress = require('./DomainProgress.model');
+
+    const due = await DomainProgress.find({
+      userId: req.user.id,
+      status: 'NeedsReview',
+      nextAttemptAt: { $lte: new Date() },
+    })
+      .populate('challengeId', 'title type tags difficulty')
+      .sort({ nextAttemptAt: 1 })
+      .lean();
+
+    const items = due
+      .filter((p) => p.challengeId) // skip any orphaned progress
+      .map((p) => ({
+        _id: p.challengeId._id,
+        title: p.challengeId.title,
+        type: p.challengeId.type,
+        tags: p.challengeId.tags,
+        difficulty: p.challengeId.difficulty,
+        nextAttemptAt: p.nextAttemptAt,
+      }));
+
+    return sendSuccess(res, { data: { count: items.length, items } });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getChallenges,
   browseDomainPool,
   selfAssessDomain,
   bulkCreateDomainQuestions,
+  getDueForReview,
   getChallengeById,
   createChallenge,
   updateChallenge,

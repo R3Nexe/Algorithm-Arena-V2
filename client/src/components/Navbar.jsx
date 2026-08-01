@@ -18,7 +18,9 @@ import {
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../context/useAuth";
+import { api } from "../lib/api";
 import Logo from "./Logo";
 
 const Navbar = ({ onLogout }) => {
@@ -27,6 +29,16 @@ const Navbar = ({ onLogout }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const { role, user } = useAuth();
+
+  // Count of domain questions due for review — drives the Interview Prep nav badge.
+  const { data: dueCount = 0 } = useQuery({
+    queryKey: ['domain-due-count'],
+    queryFn: async () => {
+      const res = await api.get('/api/challenges/domain/due');
+      return res.data.data.count || 0;
+    },
+    staleTime: 60_000,
+  });
 
   const navItems = useMemo(() => {
     const items = [
@@ -85,6 +97,11 @@ const Navbar = ({ onLogout }) => {
                       )}
                     />
                     <span>{item.name}</span>
+                    {item.path === "/interview-prep" && dueCount > 0 && (
+                      <span className="ml-1 min-w-[18px] rounded-full bg-amber-500 px-1.5 py-0.5 text-center text-[10px] font-bold text-black">
+                        {dueCount}
+                      </span>
+                    )}
                     {isActive && (
                       <motion.span
                         layoutId="nav-underline"

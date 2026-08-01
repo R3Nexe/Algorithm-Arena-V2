@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { getSessionGreeting } from "../constants/greetings";
+import DueForReviewWidget from "../components/DueForReviewWidget";
 
 /* ── helpers ─────────────────────────────────── */
 const getDominantIcon = (activeSet) => {
@@ -640,6 +641,9 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-8 pb-12">
+      {/* ── Due for review ──────────────────── */}
+      <DueForReviewWidget />
+
       {/* ── Warning ─────────────────────────── */}
       {user?.status === "Warned" && showWarning && (
         <div

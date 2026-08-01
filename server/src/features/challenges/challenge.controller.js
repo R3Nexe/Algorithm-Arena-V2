@@ -444,9 +444,61 @@ const browseDomainPool = async (req, res, next) => {
   }
 };
 
+// A participant's self-assessment of a written domain answer after seeing the model answer.
+// Drives the mastery bucket and cooldown only — never points. Mastery transitions maintain
+// the separate domainMastered counter.
+const selfAssessDomain = async (req, res, next) => {
+  try {
+    const DomainProgress = require('./DomainProgress.model');
+    const { nextAttemptAt } = require('../../../utils/domainScoring');
+    const User = require('../users/User.model');
+    const { challengeId, gotIt } = req.body;
+
+    const challenge = await Challenge.findById(challengeId);
+    if (!challenge || challenge.type !== 'written') {
+      res.status(404);
+      throw new Error('Written question not found');
+    }
+
+    const existing = await DomainProgress.findOne({ userId: req.user.id, challengeId });
+    const wasMastered = existing?.status === 'Mastered';
+
+    let update;
+    if (gotIt) {
+      update = { type: 'written', status: 'Mastered', nextAttemptAt: null, selfAssessment: 'gotIt' };
+    } else {
+      const attempt = (existing?.attempts || 0) + 1;
+      update = {
+        type: 'written',
+        status: 'NeedsReview',
+        selfAssessment: 'reviewLater',
+        attempts: attempt,
+        nextAttemptAt: nextAttemptAt(challenge.points || 0, attempt),
+      };
+    }
+
+    await DomainProgress.findOneAndUpdate(
+      { userId: req.user.id, challengeId },
+      { $set: update },
+      { upsert: true }
+    );
+
+    if (gotIt && !wasMastered) {
+      await User.findByIdAndUpdate(req.user.id, { $inc: { domainMastered: 1 } });
+    } else if (!gotIt && wasMastered) {
+      await User.findByIdAndUpdate(req.user.id, { $inc: { domainMastered: -1 } });
+    }
+
+    return sendSuccess(res, { data: { status: update.status, nextAttemptAt: update.nextAttemptAt || null } });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getChallenges,
   browseDomainPool,
+  selfAssessDomain,
   getChallengeById,
   createChallenge,
   updateChallenge,

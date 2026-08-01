@@ -11,6 +11,7 @@ const {
   importChallenges,
   getLeetCodeDetails,
   browseDomainPool,
+  selfAssessDomain,
 } = require('./challenge.controller');
 
 const { protect, admin } = require('../../../middleware/auth');
@@ -42,6 +43,7 @@ router.get('/fetch-leetcode-details', protect, admin, getLeetCodeDetails);
 
 // Domain-question pool browse (must precede '/:id' so 'domain' isn't read as an id).
 router.get('/domain', protect, browseDomainPool);
+router.post('/domain/self-assess', protect, selfAssessDomain);
 
 router.post('/import', protect, admin, upload.single('file'), importChallenges);
 

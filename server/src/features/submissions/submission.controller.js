@@ -455,7 +455,7 @@ const updateSubmissionStatus = async (req, res, next) => {
       { new: true, runValidators: true }
     )
       .populate('userId', 'username email role points solvedProblems')
-      .populate('challengeId', 'title difficulty points')
+      .populate('challengeId', 'title difficulty points type')
       .populate('reviewedBy', 'username role');
 
     await logAudit({
@@ -491,22 +491,29 @@ const updateSubmissionStatus = async (req, res, next) => {
       if (!hasOtherAccepted) {
         if (isNowAccepted) xpAwarded = true;
 
+        // Domain questions (mcq/written) feed the unified points but not solvedProblems —
+        // their mastery is tracked separately (domainMastered), driven by self-assessment,
+        // so review must never move solvedProblems or codingLevel for them.
+        const isDomain = submission.challengeId?.type && submission.challengeId.type !== 'dsa';
         const pointsDiff = isNowAccepted ? challengePoints : -challengePoints;
         const solvedDiff = isNowAccepted ? 1 : -1;
 
         const userToUpdate = await User.findById(submission.userId._id);
         if (userToUpdate) {
           userToUpdate.points = Math.max(0, (userToUpdate.points || 0) + pointsDiff);
-          userToUpdate.solvedProblems = Math.max(0, (userToUpdate.solvedProblems || 0) + solvedDiff);
 
-          // Auto-progress coding level unless chief has manually overridden it
-          if (!userToUpdate.codingLevelOverridden) {
-            if (userToUpdate.solvedProblems >= 75) {
-              userToUpdate.codingLevel = 'Advanced';
-            } else if (userToUpdate.solvedProblems >= 25) {
-              userToUpdate.codingLevel = 'Intermediate';
-            } else {
-              userToUpdate.codingLevel = 'Beginner';
+          if (!isDomain) {
+            userToUpdate.solvedProblems = Math.max(0, (userToUpdate.solvedProblems || 0) + solvedDiff);
+
+            // Auto-progress coding level unless chief has manually overridden it
+            if (!userToUpdate.codingLevelOverridden) {
+              if (userToUpdate.solvedProblems >= 75) {
+                userToUpdate.codingLevel = 'Advanced';
+              } else if (userToUpdate.solvedProblems >= 25) {
+                userToUpdate.codingLevel = 'Intermediate';
+              } else {
+                userToUpdate.codingLevel = 'Beginner';
+              }
             }
           }
 
@@ -773,9 +780,46 @@ const submitMcq = async (req, res, next) => {
   }
 };
 
+// Submit a written domain answer. Creates a Pending submission for reviewer scoring and
+// returns the model answer so the client can reveal it for self-assessment.
+const submitWritten = async (req, res, next) => {
+  try {
+    const { challengeId, answerText } = req.body;
+
+    const challenge = await Challenge.findById(challengeId);
+    if (!challenge || challenge.type !== 'written') {
+      res.status(404);
+      throw new Error('Written question not found');
+    }
+
+    const submission = await Submission.create({
+      userId: req.user.id,
+      challengeId,
+      answerText,
+      status: 'Pending',
+    });
+
+    const { emitEvent } = require('../../../config/socket');
+    emitEvent('new_submission', {
+      submissionId: submission._id,
+      username: req.user.username,
+      challengeTitle: challenge.title,
+    });
+
+    return sendSuccess(res, {
+      statusCode: 201,
+      data: { submissionId: submission._id, modelAnswer: challenge.modelAnswer },
+      message: 'Answer submitted',
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   submitCode,
   submitMcq,
+  submitWritten,
   getSubmissions,
   getMySubmissions,
   getLeaderboard,

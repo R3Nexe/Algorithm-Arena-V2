@@ -495,10 +495,50 @@ const selfAssessDomain = async (req, res, next) => {
   }
 };
 
+// Bulk-create domain questions from a JSON array. Each entry is validated independently
+// so valid rows are inserted and invalid ones are reported without failing the batch.
+const bulkCreateDomainQuestions = async (req, res, next) => {
+  try {
+    const { domainQuestionObject } = require('../../../validators/challengeSchemas');
+    const entries = Array.isArray(req.body) ? req.body : req.body?.questions;
+    if (!Array.isArray(entries) || entries.length === 0) {
+      res.status(400);
+      throw new Error('Provide a non-empty "questions" array');
+    }
+
+    const createdIds = [];
+    const failures = [];
+
+    for (let i = 0; i < entries.length; i += 1) {
+      const parsed = domainQuestionObject.safeParse(entries[i]);
+      if (!parsed.success) {
+        failures.push({
+          index: i,
+          errors: parsed.error.issues.map((is) => ({ path: is.path.join('.'), message: is.message })),
+        });
+        continue;
+      }
+      const data = parsed.data;
+      if (data.points == null) data.points = getPointsForDifficulty(data.difficulty);
+      const doc = await Challenge.create(data);
+      createdIds.push(doc._id);
+    }
+
+    return sendSuccess(res, {
+      statusCode: createdIds.length > 0 ? 201 : 400,
+      data: { createdCount: createdIds.length, createdIds, failures },
+      message: `Created ${createdIds.length} question(s), ${failures.length} failed`,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getChallenges,
   browseDomainPool,
   selfAssessDomain,
+  bulkCreateDomainQuestions,
   getChallengeById,
   createChallenge,
   updateChallenge,

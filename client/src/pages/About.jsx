@@ -2,7 +2,6 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import Logo from "../components/Logo";
-import Footer from "../components/Footer";
 import Card from "../components/Card";
 import { useAuth } from "../context/useAuth";
 
@@ -159,7 +158,6 @@ const About = () => {
         </motion.div>
       </main>
 
-      <Footer />
     </div>
   );
 };

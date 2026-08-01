@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiMail, FiMapPin, FiMessageSquare, FiCopy } from "react-icons/fi";
 import Logo from "../components/Logo";
-import Footer from "../components/Footer";
 import Card from "../components/Card";
 import { useAuth } from "../context/useAuth";
 import toast from "react-hot-toast";
@@ -187,7 +186,6 @@ const Contact = () => {
         </motion.div>
       </main>
 
-      <Footer />
     </div>
   );
 };

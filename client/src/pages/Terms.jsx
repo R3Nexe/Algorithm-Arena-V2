@@ -2,7 +2,6 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import Logo from "../components/Logo";
-import Footer from "../components/Footer";
 import { useAuth } from "../context/useAuth";
 
 const Terms = () => {
@@ -129,7 +128,6 @@ const Terms = () => {
         </motion.div>
       </main>
 
-      <Footer />
     </div>
   );
 };

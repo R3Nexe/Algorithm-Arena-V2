@@ -31,6 +31,8 @@ useIdleTimeout(() => {
 
   const isFullBleed = location.pathname.startsWith("/challenge/") || location.pathname.startsWith("/submission/");
   const isFullWidth = isFullBleed || location.pathname.startsWith("/chief-panel");
+  // The footer is intentionally limited to a few destination pages.
+  const showFooter = location.pathname === "/leaderboard" || location.pathname.startsWith("/profile");
 
   return (
     <div className="min-h-screen flex flex-col bg-app text-primary transition-colors duration-300">
@@ -57,8 +59,8 @@ useIdleTimeout(() => {
         </AnimatePresence>
       </main>
 
-      {/* Footer */}
-      {!isFullBleed && (
+      {/* Footer — limited to Leaderboard and Profile among app pages. */}
+      {showFooter && (
         <div className={user?.usernameSet !== false ? "pb-24 md:pb-0" : undefined}>
           <Footer />
         </div>

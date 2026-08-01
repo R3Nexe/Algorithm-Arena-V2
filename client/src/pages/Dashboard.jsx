@@ -367,6 +367,7 @@ const Dashboard = () => {
   const hf = (k, v) => setFilters((p) => ({ ...p, [k]: v, page: 1 }));
   const [heroIdx, setHeroIdx] = useState(0);
   const [heroDir, setHeroDir] = useState(1);
+  const [contentMode, setContentMode] = useState("missions"); // "missions" | "domain"
 
   /* ── queries ─────────────────────────────── */
   const challengesQ = useQuery({
@@ -418,6 +419,16 @@ const Dashboard = () => {
       } catch {
         return [];
       }
+    },
+  });
+
+  const domainQ = useQuery({
+    queryKey: ["dash-domain"],
+    enabled: contentMode === "domain",
+    staleTime: 30_000,
+    queryFn: async () => {
+      const res = await api.get("/api/challenges/domain");
+      return res.data.data.items || [];
     },
   });
 
@@ -1041,18 +1052,35 @@ const Dashboard = () => {
         {/* LEFT: Available Missions */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-black text-primary font-h2">
-              Available Missions
-            </h2>
+            <div className="inline-flex items-center gap-1 rounded-xl bg-white/[0.03] border border-black/[0.12] dark:border-white/[0.07] p-1">
+              {[
+                { id: "missions", label: "Missions" },
+                { id: "domain", label: "Interview Prep" },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setContentMode(opt.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
+                    contentMode === opt.id
+                      ? "bg-accent text-white shadow-lg"
+                      : "text-secondary hover:text-primary"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
             <Link
-              to="/missions"
+              to={contentMode === "domain" ? "/interview-prep" : "/missions"}
               className="text-xs font-bold text-accent hover:text-accent/80 flex items-center gap-1"
             >
               View All <FiArrowRight size={12} />
             </Link>
           </div>
 
-          {/* filters row */}
+          {/* filters row (missions only) */}
+          {contentMode === "missions" && (
+          <>
           <div className="flex flex-wrap gap-2 items-center">
             <div className="relative flex-1 min-w-[120px] max-w-xs">
               <FiSearch
@@ -1110,9 +1138,77 @@ const Dashboard = () => {
               );
             })}
           </div>
+          </>
+          )}
+
+          {/* ── Domain question grid ── */}
+          {contentMode === "domain" && (
+            domainQ.isLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[...Array(4)].map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            ) : (domainQ.data || []).length === 0 ? (
+              <EmptyState
+                title="No domain questions yet"
+                description="Interview-prep questions will appear here once an organiser adds them."
+              />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {(domainQ.data || []).slice(0, 6).map((q) => {
+                  const diff = getDifficultyRGB(q.difficulty);
+                  const mastered = q.masteryStatus === "Mastered";
+                  const due = q.masteryStatus === "NeedsReview" && !q.locked;
+                  return (
+                    <Link
+                      key={q._id}
+                      to={`/interview-prep/${q._id}`}
+                      className={`group flex flex-col gap-3 rounded-2xl border p-5 transition-all ${
+                        mastered
+                          ? "border-green-500/20 bg-green-500/[0.04]"
+                          : "surface-card border-black/[0.12] dark:border-white/[0.07] hover:border-accent/40"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="rounded bg-white/5 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-tertiary">
+                          {q.type === "mcq" ? "MCQ" : "Written"}
+                        </span>
+                        {mastered ? (
+                          <span className="text-[9px] font-black uppercase text-green-500">Mastered</span>
+                        ) : due ? (
+                          <span className="text-[9px] font-black uppercase text-amber-500">Due now</span>
+                        ) : q.locked ? (
+                          <span className="text-[9px] font-black uppercase text-tertiary">Locked</span>
+                        ) : null}
+                      </div>
+                      <h2 className="text-sm font-bold leading-snug text-primary group-hover:text-accent transition-colors line-clamp-2">
+                        {q.title}
+                      </h2>
+                      <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
+                        <span
+                          className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full border"
+                          style={{ color: `rgb(${diff})`, backgroundColor: `rgba(${diff},0.12)`, borderColor: `rgba(${diff},0.3)` }}
+                        >
+                          {q.difficulty}
+                        </span>
+                        <span className="text-[10px] font-black text-accent">{q.points} XP</span>
+                        {(q.tags || []).slice(0, 2).map((t) => (
+                          <span key={t} className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-white/5 text-secondary">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )
+          )}
 
           {/* challenge grid 2×2 */}
-          {challengesQ.isLoading ? (
+          {contentMode === "missions" && (
+          challengesQ.isLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[...Array(4)].map((_, i) => (
                 <SkeletonCard key={i} />
@@ -1205,7 +1301,7 @@ const Dashboard = () => {
                 );
               })}
             </div>
-          )}
+          ))}
         </div>
 
         {/* RIGHT: Recent Activity */}

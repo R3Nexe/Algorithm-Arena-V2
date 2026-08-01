@@ -29,6 +29,7 @@ const Profile = lazy(() => import('./pages/Profile'));
 const ClanChiefPanel = lazy(() => import('./pages/ClanChiefPanel'));
 const Missions = lazy(() => import('./pages/Missions'));
 const InterviewPrep = lazy(() => import('./pages/InterviewPrep'));
+const DomainQuestionSolve = lazy(() => import('./pages/DomainQuestionSolve'));
 const PendingTasks = lazy(() => import('./pages/PendingTasks'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Badges = lazy(() => import('./pages/Badges'));
@@ -89,6 +90,7 @@ function App() {
             <Route path="/submission/:id" element={<SubmissionDetails />} />
             <Route path="/missions" element={<Missions />} />
             <Route path="/interview-prep" element={<InterviewPrep />} />
+            <Route path="/interview-prep/:id" element={<DomainQuestionSolve />} />
             <Route path="/pending-tasks" element={<PendingTasks />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/badges" element={<Badges />} />

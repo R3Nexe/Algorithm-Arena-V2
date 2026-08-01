@@ -24,7 +24,9 @@ const getChallenges = async (req, res, next) => {
 
     const safeLimit = Math.min(Number(limit) || 10, 100);
 
-    const filter = {};
+    // Only DSA challenges belong in the generic browse (dashboard, missions). Domain
+    // questions live in the standalone Interview Prep pool and are fetched via /domain.
+    const filter = { type: 'dsa' };
     const andConditions = [];
 
     if (setId) filter.questionSetId = setId;
@@ -188,6 +190,18 @@ const getChallengeById = async (req, res, next) => {
     if (!challenge) {
       res.status(404);
       throw new Error('Challenge not found');
+    }
+
+    // Never expose a domain question's answer key through the generic endpoint to
+    // non-admins. Participants read domain questions via /domain/:id (also stripped).
+    const isAdmin = ['admin', 'superAdmin', 'super-admin'].includes(req.user?.role);
+    if (challenge.type && challenge.type !== 'dsa' && !isAdmin) {
+      const safe = challenge.toObject();
+      delete safe.correctOption;
+      delete safe.modelAnswer;
+      delete safe.explanation;
+      delete safe.solutions;
+      return sendSuccess(res, { data: safe });
     }
 
     return sendSuccess(res, { data: challenge });
@@ -444,6 +458,46 @@ const browseDomainPool = async (req, res, next) => {
   }
 };
 
+// Full domain-question documents (incl. answer keys) for the admin management list.
+const getDomainQuestionsForAdmin = async (req, res, next) => {
+  try {
+    const items = await Challenge.find({ type: { $in: ['mcq', 'written'] } })
+      .sort({ createdAt: -1 })
+      .lean();
+    return sendSuccess(res, { data: { items } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// A single domain question for the participant solve page — stripped of answer keys and
+// joined with the caller's mastery state. Cannot resolve a DSA challenge.
+const getDomainQuestionById = async (req, res, next) => {
+  try {
+    const DomainProgress = require('./DomainProgress.model');
+    const challenge = await Challenge.findOne({ _id: req.params.id, type: { $in: ['mcq', 'written'] } })
+      .select('title description type difficulty points tags options createdAt')
+      .lean();
+    if (!challenge) {
+      res.status(404);
+      throw new Error('Question not found');
+    }
+    const progress = await DomainProgress.findOne({ userId: req.user.id, challengeId: challenge._id }).lean();
+    const now = new Date();
+    return sendSuccess(res, {
+      data: {
+        ...challenge,
+        masteryStatus: progress?.status || 'Unattempted',
+        nextAttemptAt: progress?.nextAttemptAt || null,
+        locked: progress?.nextAttemptAt ? progress.nextAttemptAt > now : false,
+        selfAssessment: progress?.selfAssessment || null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // A participant's self-assessment of a written domain answer after seeing the model answer.
 // Drives the mastery bucket and cooldown only — never points. Mastery transitions maintain
 // the separate domainMastered counter.
@@ -572,6 +626,8 @@ module.exports = {
   selfAssessDomain,
   bulkCreateDomainQuestions,
   getDueForReview,
+  getDomainQuestionsForAdmin,
+  getDomainQuestionById,
   getChallengeById,
   createChallenge,
   updateChallenge,

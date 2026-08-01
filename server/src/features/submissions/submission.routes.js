@@ -4,6 +4,7 @@ const router = express.Router();
 
 const {
   submitCode,
+  submitMcq,
   getSubmissions,
   getMySubmissions,
   getLeaderboard,
@@ -47,6 +48,8 @@ router.get('/my-submissions', protect, validate(mySubmissionQuerySchema), getMyS
 router.get('/my', protect, validate(mySubmissionQuerySchema), getMySubmissions);
 router.get('/leaderboard', protect, validate(leaderboardQuerySchema), getLeaderboard);
 router.get('/user/:username', protect, validate(userSubmissionQuerySchema), getSubmissionsByUsername);
+
+router.post('/mcq', protect, submitMcq);
 
 router.post('/run/batch', protect, runLimiter, submitRunBatch);
 router.get('/run/batch', protect, getRunBatchResults);

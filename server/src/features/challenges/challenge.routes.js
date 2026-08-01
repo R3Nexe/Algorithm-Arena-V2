@@ -10,6 +10,7 @@ const {
   deleteChallenge,
   importChallenges,
   getLeetCodeDetails,
+  browseDomainPool,
 } = require('./challenge.controller');
 
 const { protect, admin } = require('../../../middleware/auth');
@@ -38,6 +39,9 @@ const upload = multer({
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 router.get('/fetch-leetcode-details', protect, admin, getLeetCodeDetails);
+
+// Domain-question pool browse (must precede '/:id' so 'domain' isn't read as an id).
+router.get('/domain', protect, browseDomainPool);
 
 router.post('/import', protect, admin, upload.single('file'), importChallenges);
 

@@ -13,7 +13,7 @@ const xpLogSchema = new mongoose.Schema({
   },
   reason: {
     type: String,
-    enum: ['Daily Login', 'Challenge Accepted', 'Submission Reverted'],
+    enum: ['Daily Login', 'Challenge Accepted', 'Submission Reverted', 'Domain Mastered', 'Domain Reverted'],
     required: true,
   },
   challengeId: {

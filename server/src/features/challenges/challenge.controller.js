@@ -400,8 +400,53 @@ const getLeetCodeDetails = async (req, res, next) => {
   }
 };
 
+// Participant-facing browse of the standalone domain-question pool, filtered by tags and
+// joined with the caller's mastery state. Selects only safe fields so answer keys
+// (correctOption, explanation, modelAnswer, solutions) never reach the client.
+const browseDomainPool = async (req, res, next) => {
+  try {
+    const DomainProgress = require('./DomainProgress.model');
+    const { tags, type } = req.query;
+
+    const filter = { type: { $in: ['mcq', 'written'] } };
+    if (type === 'mcq' || type === 'written') filter.type = type;
+    if (tags) {
+      const tagList = String(tags).split(',').map((t) => t.trim()).filter(Boolean);
+      if (tagList.length) {
+        filter.tags = { $in: tagList.map((t) => new RegExp(`^${t}$`, 'i')) };
+      }
+    }
+
+    const challenges = await Challenge.find(filter)
+      .select('title description type difficulty points tags options createdAt')
+      .lean();
+
+    const progresses = await DomainProgress.find({
+      userId: req.user.id,
+      challengeId: { $in: challenges.map((c) => c._id) },
+    }).lean();
+    const byId = new Map(progresses.map((p) => [String(p.challengeId), p]));
+
+    const now = new Date();
+    const items = challenges.map((c) => {
+      const p = byId.get(String(c._id));
+      return {
+        ...c,
+        masteryStatus: p?.status || 'Unattempted',
+        nextAttemptAt: p?.nextAttemptAt || null,
+        locked: p?.nextAttemptAt ? p.nextAttemptAt > now : false,
+      };
+    });
+
+    return sendSuccess(res, { data: { items } });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getChallenges,
+  browseDomainPool,
   getChallengeById,
   createChallenge,
   updateChallenge,

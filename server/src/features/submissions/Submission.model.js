@@ -14,6 +14,12 @@ const submissionSchema = new mongoose.Schema({
   repositoryUrl: { type: String }, // Optional: Github Link
   code: { type: String },          // Optional: Direct Code Paste
   language: { type: String, default: 'javascript' },
+  // Domain-question answers: the chosen 0-based option (MCQ) or prose (written).
+  selectedOption: { type: Number },
+  answerText: { type: String },
+  // Points this submission actually granted. For MCQ this is the decayed amount and
+  // differs from the challenge's full points; recorded so reverts subtract exactly.
+  awardedPoints: { type: Number },
   status: { 
     type: String, 
     enum: ['Pending', 'Accepted', 'Rejected'], 

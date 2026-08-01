@@ -10,10 +10,26 @@ const paramSchema = new mongoose.Schema({ name: String, type: String }, { _id: f
 const challengeSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
-  difficulty: { 
-    type: String, 
-    enum: ['Easy', 'Medium', 'Hard'], 
-    default: 'Easy' 
+  // Question type discriminator. 'dsa' is the original code-with-test-cases shape;
+  // 'mcq' and 'written' are domain questions. Defaults to 'dsa' so existing
+  // challenges read back unchanged and need no migration.
+  type: {
+    type: String,
+    enum: ['dsa', 'mcq', 'written'],
+    default: 'dsa',
+  },
+  // MCQ-only: the answer options and the 0-based index of the correct one, plus an
+  // optional explanation revealed after a graded attempt. Never sent to participants
+  // before they answer.
+  options: [{ type: String }],
+  correctOption: { type: Number },
+  explanation: { type: String, default: '' },
+  // Written-only: the model answer uploaded with the question, revealed on submit.
+  modelAnswer: { type: String, default: '' },
+  difficulty: {
+    type: String,
+    enum: ['Easy', 'Medium', 'Hard'],
+    default: 'Easy'
   },
   points: { type: Number, default: function () { return getPointsForDifficulty(this.difficulty); } },
   category: { type: String, default: 'Logic' },
@@ -53,6 +69,7 @@ challengeSchema.index({ createdAt: -1 });
 challengeSchema.index({ difficulty: 1, category: 1 });
 challengeSchema.index({ tags: 1 });
 challengeSchema.index({ questionSetId: 1 });
+challengeSchema.index({ type: 1, tags: 1 });
 challengeSchema.index({ title: 'text', description: 'text' });
 
 module.exports = mongoose.model('Challenge', challengeSchema);

@@ -120,6 +120,12 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  // Count of mastered domain questions, tracked separately from solvedProblems so
+  // domain progress never shifts DSA badges or codingLevel.
+  domainMastered: {
+    type: Number,
+    default: 0,
+  },
   lastLoginDate: {
     type: Date,
     default: null,

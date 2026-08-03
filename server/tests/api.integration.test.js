@@ -1276,6 +1276,81 @@ test('daily login XP logic awards XP on the first /me call after onboarding is c
   assert.equal(logsCount2, 1);
 });
 
+test('updateQuestionSet locks non-solution fields once the deadline has passed, but still allows solution fixes', async () => {
+  const Challenge = require('../src/features/challenges/Challenge.model.js');
+
+  const admin = await registerUser({ username: 'admin_deadline_lock', email: 'admin.deadline@example.com' });
+  await User.findByIdAndUpdate(admin.id, { role: 'admin' });
+
+  const adminLogin = await request(app).post('/api/auth/login').send({
+    email: 'admin.deadline@example.com',
+    password: 'strong-password',
+  });
+  const adminToken = adminLogin.body.data.token;
+
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  const createRes = await request(app)
+    .post('/api/sets')
+    .set('Authorization', `Bearer ${adminToken}`)
+    .send({
+      title: 'Past Deadline Set',
+      weekNumber: 1,
+      deadline: yesterday,
+      targetLevel: 'Both',
+      questions: [{
+        title: 'Two Sum',
+        difficulty: 'Easy',
+        description: 'Find two numbers that add up to target.',
+        functionName: 'twoSum',
+        solutions: [{ lang: 'JavaScript', langSlug: 'javascript', code: 'function twoSum() {}' }],
+        testCases: [],
+      }],
+    });
+  assert.equal(createRes.status, 201);
+  const setId = createRes.body.data._id;
+
+  // A direct API call (bypassing the admin UI's disabled inputs) tries to
+  // change locked fields *and* fix the solution in the same request.
+  const updateRes = await request(app)
+    .put(`/api/sets/${setId}`)
+    .set('Authorization', `Bearer ${adminToken}`)
+    .send({
+      title: 'Renamed After Deadline',
+      weekNumber: 99,
+      deadline: new Date().toISOString().split('T')[0],
+      targetLevel: 'Beginner',
+      status: 'Draft',
+      questions: [{
+        title: 'Renamed Question',
+        difficulty: 'Hard',
+        description: 'Changed description',
+        functionName: 'twoSum',
+        solutions: [{ lang: 'JavaScript', langSlug: 'javascript', code: 'function twoSum() { return [0, 1]; }' }],
+        testCases: [],
+      }],
+    });
+
+  assert.equal(updateRes.status, 200);
+  // Locked fields are unchanged...
+  assert.equal(updateRes.body.data.title, 'Past Deadline Set');
+  assert.equal(updateRes.body.data.weekNumber, 1);
+  assert.equal(updateRes.body.data.targetLevel, 'Both');
+  assert.equal(updateRes.body.data.status, 'Published');
+  assert.equal(updateRes.body.data.questions[0].title, 'Two Sum');
+  assert.equal(updateRes.body.data.questions[0].difficulty, 'Easy');
+  assert.equal(updateRes.body.data.questions[0].description, 'Find two numbers that add up to target.');
+  // ...but the solution fix went through.
+  assert.equal(updateRes.body.data.questions[0].solutions[0].code, 'function twoSum() { return [0, 1]; }');
+
+  // The mirrored Challenge doc used by Missions/Dashboard picks up the fixed
+  // solution too, without adopting the spoofed title/difficulty/description.
+  const challenge = await Challenge.findOne({ questionSetId: setId });
+  assert.equal(challenge.title, 'Two Sum');
+  assert.equal(challenge.difficulty, 'Easy');
+  assert.equal(challenge.solutions[0].code, 'function twoSum() { return [0, 1]; }');
+});
+
 
 
 

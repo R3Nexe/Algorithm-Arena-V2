@@ -1,18 +1,63 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { FiPlus, FiTrash2, FiUploadCloud, FiEdit2, FiX } from 'react-icons/fi';
+import {
+  FiPlus,
+  FiTrash2,
+  FiUploadCloud,
+  FiEdit2,
+  FiX,
+  FiCopy,
+  FiChevronDown,
+  FiCheck,
+  FiEye,
+} from 'react-icons/fi';
 import BaseCard from '../../components/BaseCard';
 import { api } from '../../lib/api';
 
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
+
+// Ready-to-copy templates shown in the format guide. Kept as objects so we can
+// stringify them (single item, or both together as an array) on demand.
+const MCQ_EXAMPLE = {
+  type: 'mcq',
+  title: 'Cache eviction policy',
+  description: 'Which policy evicts the entry unused for the longest time?',
+  difficulty: 'Easy',
+  subject: 'System Design',
+  tags: ['caching'],
+  options: ['FIFO', 'LRU', 'LIFO'],
+  correctOption: 1,
+  explanation: 'LRU evicts the **least recently used** entry.',
+};
+
+const WRITTEN_EXAMPLE = {
+  type: 'written',
+  title: 'Explain database indexing',
+  description: 'Describe how a B-tree index speeds up lookups.',
+  difficulty: 'Medium',
+  subject: 'Databases',
+  tags: ['indexing'],
+  modelAnswer: 'A B-tree keeps keys sorted, giving `O(log n)` lookups…',
+};
+
+const pretty = (val) => JSON.stringify(val, null, 2);
+
+const copyToClipboard = async (text, label) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(`${label} copied`);
+  } catch {
+    toast.error('Could not copy to clipboard');
+  }
+};
 
 const emptyForm = () => ({
   type: 'mcq',
   title: '',
   description: '',
   difficulty: 'Easy',
-  category: '',
+  subject: '',
   tags: '',
   options: ['', ''],
   correctOption: 0,
@@ -25,7 +70,7 @@ const formFromQuestion = (q) => ({
   title: q.title || '',
   description: q.description || '',
   difficulty: q.difficulty || 'Easy',
-  category: q.category && q.category !== 'Logic' ? q.category : '',
+  subject: q.subject || '',
   tags: (q.tags || []).join(', '),
   options: q.options?.length ? q.options : ['', ''],
   correctOption: q.correctOption ?? 0,
@@ -60,6 +105,9 @@ const DomainQuestionsTab = () => {
   const [bulkText, setBulkText] = useState('');
   const [bulkResult, setBulkResult] = useState(null);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkPreview, setBulkPreview] = useState(null); // parsed questions awaiting confirmation
+  const [editingBulkIndex, setEditingBulkIndex] = useState(null); // index in bulkPreview loaded into the left form
+  const [showGuide, setShowGuide] = useState(false);
 
   const questionsQuery = useQuery({
     queryKey: ['admin-domain-questions'],
@@ -85,14 +133,34 @@ const DomainQuestionsTab = () => {
   const resetForm = () => {
     setForm(emptyForm());
     setEditingId(null);
+    setEditingBulkIndex(null);
     setErrors([]);
   };
 
   const startEdit = (q) => {
     setForm(formFromQuestion(q));
     setEditingId(q._id);
+    setEditingBulkIndex(null);
     setErrors([]);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Load a staged bulk-preview question into the left authoring form. Saving it
+  // writes back into the preview array rather than hitting the server.
+  const startBulkEdit = (i) => {
+    setForm(formFromQuestion(bulkPreview[i]));
+    setEditingBulkIndex(i);
+    setEditingId(null);
+    setErrors([]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const removeBulkQuestion = (i) => {
+    setBulkPreview((prev) => {
+      const next = prev.filter((_, idx) => idx !== i);
+      return next.length ? next : null;
+    });
+    if (editingBulkIndex === i) resetForm();
   };
 
   const buildPayload = () => {
@@ -101,7 +169,7 @@ const DomainQuestionsTab = () => {
       title: form.title.trim(),
       description: form.description.trim(),
       difficulty: form.difficulty,
-      ...(form.category.trim() ? { category: form.category.trim() } : {}),
+      ...(form.subject.trim() ? { subject: form.subject.trim() } : {}),
       tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
     };
     if (form.type === 'mcq') {
@@ -118,6 +186,16 @@ const DomainQuestionsTab = () => {
   const onSave = async (e) => {
     e.preventDefault();
     setErrors([]);
+
+    // Editing a staged bulk-preview question: update it in place, no server call.
+    if (editingBulkIndex !== null) {
+      const idx = editingBulkIndex;
+      setBulkPreview((prev) => prev.map((q, i) => (i === idx ? buildPayload() : q)));
+      toast.success(`Question #${idx + 1} updated`);
+      resetForm();
+      return;
+    }
+
     setSaving(true);
     try {
       if (editingId) {
@@ -150,8 +228,12 @@ const DomainQuestionsTab = () => {
     }
   };
 
-  const onBulk = async () => {
+  // Parse the pasted JSON and stage it for review — nothing is created until the
+  // admin confirms. Validation stays server-side; this is a visual sanity check.
+  const onParse = () => {
     setBulkResult(null);
+    setBulkPreview(null);
+    if (editingBulkIndex !== null) resetForm();
     let parsed;
     try {
       parsed = JSON.parse(bulkText);
@@ -164,10 +246,20 @@ const DomainQuestionsTab = () => {
       toast.error('Provide a JSON array of questions (or { "questions": [...] })');
       return;
     }
+    setBulkPreview(bulkQuestions);
+  };
+
+  const onConfirmBulk = async () => {
+    if (!bulkPreview) return;
+    if (editingBulkIndex !== null) {
+      toast.error('Finish editing the open question first');
+      return;
+    }
     setBulkBusy(true);
     try {
-      const res = await api.post('/api/challenges/domain/bulk', { questions: bulkQuestions });
+      const res = await api.post('/api/challenges/domain/bulk', { questions: bulkPreview });
       setBulkResult(res.data.data);
+      setBulkPreview(null);
       toast.success(res.data.message || 'Uploaded');
       refresh();
     } catch (err) {
@@ -184,9 +276,13 @@ const DomainQuestionsTab = () => {
         <BaseCard className="p-5">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-white">
-              {editingId ? 'Edit domain question' : 'New domain question'}
+              {editingBulkIndex !== null
+                ? `Edit staged question #${editingBulkIndex + 1}`
+                : editingId
+                  ? 'Edit domain question'
+                  : 'New domain question'}
             </h3>
-            {editingId && (
+            {(editingId || editingBulkIndex !== null) && (
               <button onClick={resetForm} className="flex items-center gap-1 text-sm text-white/50 hover:text-white">
                 <FiX /> Cancel edit
               </button>
@@ -213,9 +309,9 @@ const DomainQuestionsTab = () => {
 
             <input
               className={inputCls}
-              placeholder="Domain / top-level category (e.g. Data Science, System Design)"
-              value={form.category}
-              onChange={(e) => set({ category: e.target.value })}
+              placeholder="Subject (e.g. System Design, Data Science, Cyber Security)"
+              value={form.subject}
+              onChange={(e) => set({ subject: e.target.value })}
             />
 
             <div className="flex gap-3">
@@ -251,7 +347,13 @@ const DomainQuestionsTab = () => {
             )}
 
             <button type="submit" disabled={saving} className="w-full rounded-lg bg-indigo-500 py-2 text-sm font-medium text-white hover:bg-indigo-400 disabled:opacity-50">
-              {saving ? 'Saving…' : editingId ? 'Update question' : 'Create question'}
+              {saving
+                ? 'Saving…'
+                : editingBulkIndex !== null
+                  ? 'Done — update staged question'
+                  : editingId
+                    ? 'Update question'
+                    : 'Create question'}
             </button>
           </form>
         </BaseCard>
@@ -259,17 +361,121 @@ const DomainQuestionsTab = () => {
         {/* ── Bulk upload ───────────────────────────────────────────── */}
         <BaseCard className="p-5">
           <h3 className="mb-1 flex items-center gap-2 text-lg font-semibold text-white"><FiUploadCloud /> Bulk upload</h3>
-          <p className="mb-3 text-sm text-white/50">Paste a JSON array of questions. Valid entries are created; invalid ones are reported below.</p>
+          <p className="mb-3 text-sm text-white/50">Paste a JSON array of questions, preview them, then confirm. Invalid entries are reported after upload.</p>
+
+          {/* ── Format guide (collapsible) ── */}
+          <div className="mb-3 rounded-lg border border-white/10 bg-black/10">
+            <button
+              type="button"
+              onClick={() => setShowGuide((s) => !s)}
+              className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-white/70 hover:text-white"
+            >
+              <span>Format guide &amp; templates</span>
+              <FiChevronDown className={`transition-transform ${showGuide ? 'rotate-180' : ''}`} />
+            </button>
+            {showGuide && (
+              <div className="space-y-4 border-t border-white/10 px-3 py-3">
+                <p className="text-xs text-white/50">
+                  Required for both: <code className="text-white/70">type, title, description, difficulty</code>.
+                  MCQ also needs <code className="text-white/70">options</code> &amp; <code className="text-white/70">correctOption</code> (0-based);
+                  Written needs <code className="text-white/70">modelAnswer</code>.
+                  Optional: <code className="text-white/70">subject, tags, explanation</code>. Text fields accept Markdown.
+                </p>
+                {[
+                  { label: 'MCQ', data: MCQ_EXAMPLE },
+                  { label: 'Written', data: WRITTEN_EXAMPLE },
+                ].map(({ label, data }) => (
+                  <div key={label}>
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wide text-white/40">{label}</span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(pretty(data), `${label} template`)}
+                        className="flex items-center gap-1 text-xs text-indigo-300 hover:text-indigo-200"
+                      >
+                        <FiCopy size={12} /> Copy
+                      </button>
+                    </div>
+                    <pre className="max-h-52 overflow-auto rounded-lg bg-black/40 p-3 font-mono text-[11px] leading-relaxed text-white/80">
+                      {pretty(data)}
+                    </pre>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(pretty([MCQ_EXAMPLE, WRITTEN_EXAMPLE]), 'Starter array')}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-indigo-400/40 py-1.5 text-xs font-medium text-indigo-200 hover:bg-indigo-500/10"
+                >
+                  <FiCopy size={12} /> Copy both as array
+                </button>
+              </div>
+            )}
+          </div>
+
           <textarea
             className={`${inputCls} font-mono`}
             rows={12}
-            placeholder={'[\n  { "type": "mcq", "title": "...", "description": "...", "difficulty": "Easy",\n    "options": ["A","B"], "correctOption": 0, "tags": ["databases"] }\n]'}
+            placeholder={'[\n  { "type": "mcq", "title": "...", "description": "...", "difficulty": "Easy",\n    "subject": "System Design", "tags": ["cache"],\n    "options": ["A","B"], "correctOption": 0 }\n]'}
             value={bulkText}
-            onChange={(e) => setBulkText(e.target.value)}
+            onChange={(e) => { setBulkText(e.target.value); setBulkPreview(null); }}
           />
-          <button type="button" onClick={onBulk} disabled={bulkBusy} className="mt-3 w-full rounded-lg bg-emerald-500 py-2 text-sm font-medium text-white hover:bg-emerald-400 disabled:opacity-50">
-            {bulkBusy ? 'Uploading…' : 'Upload'}
-          </button>
+
+          {!bulkPreview ? (
+            <button type="button" onClick={onParse} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 py-2 text-sm font-medium text-white hover:bg-emerald-400">
+              <FiEye size={14} /> Parse &amp; preview
+            </button>
+          ) : (
+            <div className="mt-3 space-y-3">
+              <div className="rounded-lg border border-white/10 bg-black/10 p-3">
+                <p className="mb-2 text-sm font-medium text-white/80">
+                  {bulkPreview.length} question(s) ready to upload
+                </p>
+                <div className="max-h-72 space-y-2 overflow-auto">
+                  {bulkPreview.map((q, i) => (
+                    <div key={i} className={`rounded-lg border p-2.5 ${editingBulkIndex === i ? 'border-indigo-400/50 bg-indigo-500/[0.06]' : 'border-white/5 bg-white/[0.02]'}`}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-white/30">#{i + 1}</span>
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${q.type === 'written' ? 'bg-purple-500/20 text-purple-300' : 'bg-indigo-500/20 text-indigo-300'}`}>
+                          {q.type || '—'}
+                        </span>
+                        <span className="truncate text-sm font-medium text-white">{q.title || <span className="text-red-300">(no title)</span>}</span>
+                        <span className="ml-auto flex items-center gap-1">
+                          {editingBulkIndex === i && <span className="mr-1 text-[10px] font-medium text-indigo-300">editing →</span>}
+                          <button type="button" onClick={() => startBulkEdit(i)} className="rounded p-1 text-white/40 hover:bg-white/5 hover:text-indigo-300" title="Edit in the panel"><FiEdit2 size={13} /></button>
+                          <button type="button" onClick={() => removeBulkQuestion(i)} className="rounded p-1 text-white/40 hover:bg-white/5 hover:text-red-400" title="Remove"><FiTrash2 size={13} /></button>
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-white/40">
+                        {[q.subject, q.difficulty, (q.tags || []).join(', ')].filter(Boolean).join(' · ') || 'no metadata'}
+                      </p>
+                      {q.type === 'mcq' && Array.isArray(q.options) && (
+                        <ul className="mt-1.5 space-y-0.5">
+                          {q.options.map((opt, oi) => (
+                            <li key={oi} className={`flex items-center gap-1.5 text-xs ${oi === q.correctOption ? 'text-emerald-300' : 'text-white/50'}`}>
+                              {oi === q.correctOption ? <FiCheck size={11} /> : <span className="w-[11px]" />}
+                              {opt}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {q.type === 'written' && q.modelAnswer && (
+                        <p className="mt-1.5 line-clamp-2 text-xs text-white/50">Model: {q.modelAnswer}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={onConfirmBulk} disabled={bulkBusy} className="flex-1 rounded-lg bg-emerald-500 py-2 text-sm font-medium text-white hover:bg-emerald-400 disabled:opacity-50">
+                  {bulkBusy ? 'Uploading…' : `Confirm upload (${bulkPreview.length})`}
+                </button>
+                <button type="button" onClick={() => { setBulkPreview(null); if (editingBulkIndex !== null) resetForm(); }} disabled={bulkBusy} className="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-white/60 hover:text-white disabled:opacity-50">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
           {bulkResult && (
             <div className="mt-4 space-y-2 text-sm">
               <p className="text-emerald-300">Created {bulkResult.createdCount} question(s).</p>
@@ -307,8 +513,8 @@ const DomainQuestionsTab = () => {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-white">{q.title}</p>
                   <p className="text-xs text-white/40">
-                    {q.category && q.category !== 'Logic' ? `${q.category} · ` : ''}
-                    {q.difficulty} · {(q.tags || []).join(', ') || 'no sub-topics'}
+                    {q.subject ? `${q.subject} · ` : ''}
+                    {q.difficulty} · {(q.tags || []).join(', ') || 'no topics'}
                   </p>
                 </div>
                 <button onClick={() => startEdit(q)} className="rounded-lg p-2 text-white/50 hover:bg-white/5 hover:text-indigo-300" title="Edit"><FiEdit2 /></button>

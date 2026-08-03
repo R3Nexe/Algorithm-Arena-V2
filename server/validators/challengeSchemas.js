@@ -47,6 +47,7 @@ const domainFields = {
   correctOption: z.coerce.number().int().min(0).optional(),
   explanation: z.string().trim().optional().default(''),
   modelAnswer: z.string().trim().optional().default(''),
+  subject: z.string().trim().max(80).optional().default(''),
 };
 
 // Standalone schema for one domain question in a bulk upload (domain-only, no code fields).
@@ -110,6 +111,7 @@ const challengeUpdateSchema = {
       correctOption: z.coerce.number().int().min(0).optional(),
       explanation: z.string().trim().optional(),
       modelAnswer: z.string().trim().optional(),
+      subject: z.string().trim().max(80).optional(),
     })
     .refine((obj) => Object.keys(obj).length > 0, 'At least one field is required'),
 };

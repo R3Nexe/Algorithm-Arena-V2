@@ -8,6 +8,7 @@
 /* Default Stack Imports: Inter (Body), Michroma & Orbitron (Headings) */
 @import url("https://rsms.me/inter/inter.css");
 @import url('https://fonts.googleapis.com/css2?family=Michroma&family=Orbitron:wght@400..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,400;1,200&family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap');
 
 /* Additional Alternative Premium Fonts (Pre-imported for easy testing): */
 /*
@@ -18,9 +19,9 @@
    - Syne: Expressive, artistic headline font
    - Montserrat: Bold, high-character sans-serif
 */
-@import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,400;1,200&family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap');
 
-/* Tailwind Engine Directives */
+/*
+*/
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -620,6 +621,7 @@ samp,
     }
 }
 
+
 /* Recent Activity Icon Glow in Dark Mode */
 [data-theme="dark"] .recent-activity-icon {
     filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.75));
@@ -638,6 +640,7 @@ samp,
     color: #25D366 !important;
     border-color: #25D366 !important;
     background-color: rgba(37, 211, 102, 0.1) !important;
+/* Default Stack Imports: Inter (Body), Michroma & Orbitron (Headings) */
 }
 
 .social-instagram:hover {
@@ -724,9 +727,6 @@ samp,
 /* 1. IMPORT GOOGLE FONTS & CUSTOM FONTS
    Uncomment or add imports below to easily test different styling. */
 
-/* Default Stack Imports: Inter (Body), Michroma & Orbitron (Headings) */
-@import url("https://rsms.me/inter/inter.css");
-@import url('https://fonts.googleapis.com/css2?family=Michroma&family=Orbitron:wght@400..900&display=swap');
 
 /* Additional Alternative Premium Fonts (Pre-imported for easy testing): */
 /*
@@ -737,7 +737,6 @@ samp,
    - Syne: Expressive, artistic headline font
    - Montserrat: Bold, high-character sans-serif
 */
-@import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,400;1,200&family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap');
 
 /* Tailwind Engine Directives */
 @tailwind base;
@@ -1434,5 +1433,3 @@ samp,
         animation: slideRightIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 }
-
-

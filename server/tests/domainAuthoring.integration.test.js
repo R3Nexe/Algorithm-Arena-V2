@@ -78,6 +78,22 @@ test('admin can author an MCQ question with options and a correct option', async
   assert.equal(saved.correctOption, 1);
 });
 
+test('subject is persisted and returned in the domain pool', async () => {
+  const token = await registerAdmin();
+  const res = await post(token, '/api/challenges', validMcq({ subject: 'System Design', tags: ['cache'] }));
+  assert.equal(res.status, 201);
+
+  const saved = await Challenge.findById(res.body.data._id);
+  assert.equal(saved.subject, 'System Design');
+
+  const pool = await request(app)
+    .get('/api/challenges/domain')
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(pool.status, 200);
+  const item = pool.body.data.items.find((i) => i._id === res.body.data._id);
+  assert.equal(item.subject, 'System Design');
+});
+
 test('MCQ with fewer than two options is rejected', async () => {
   const token = await registerAdmin();
   const res = await post(token, '/api/challenges', validMcq({ options: ['only one'] }));

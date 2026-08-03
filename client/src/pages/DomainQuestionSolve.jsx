@@ -15,6 +15,7 @@ import {
 import { api } from "../lib/api";
 import { getDifficultyRGB } from "../constants/difficulty";
 import SkeletonCard from "../components/SkeletonCard";
+import Markdown from "../components/Markdown";
 
 const untilLabel = (iso) => {
   const ms = new Date(iso).getTime() - Date.now();
@@ -131,9 +132,9 @@ const McqSolver = ({ question, onGraded }) => {
               </div>
             )}
             {result.explanation && (
-              <p className="mt-3 border-t border-black/5 pt-3 text-sm leading-relaxed text-secondary dark:border-white/5">
-                {result.explanation}
-              </p>
+              <div className="mt-3 border-t border-black/5 pt-3 text-sm dark:border-white/5">
+                <Markdown>{result.explanation}</Markdown>
+              </div>
             )}
           </motion.div>
         ) : (
@@ -234,7 +235,7 @@ const WrittenSolver = ({ question, onGraded }) => {
           <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-green-500/80">
             Model answer
           </p>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-secondary">{modelAnswer}</p>
+          <Markdown className="text-sm">{modelAnswer}</Markdown>
         </div>
       </div>
 
@@ -269,6 +270,12 @@ const DomainQuestionSolve = () => {
   const { id } = useParams();
   const queryClient = useQueryClient();
 
+  // True once the participant has graded this question in the current visit.
+  // Keeps the solver (and its revealed answer) on screen even after the refetch
+  // reports the question as freshly locked — the cooldown screen is only for a
+  // *return* visit, not the moment right after answering.
+  const [graded, setGraded] = useState(false);
+
   const { data: question, isLoading, isError } = useQuery({
     queryKey: ["domain-question", id],
     queryFn: async () => {
@@ -278,6 +285,7 @@ const DomainQuestionSolve = () => {
   });
 
   const onGraded = () => {
+    setGraded(true);
     queryClient.invalidateQueries({ queryKey: ["domain-pool"] });
     queryClient.invalidateQueries({ queryKey: ["domain-due"] });
     queryClient.invalidateQueries({ queryKey: ["domain-due-count"] });
@@ -303,8 +311,10 @@ const DomainQuestionSolve = () => {
   }
 
   const diff = getDifficultyRGB(question.difficulty);
-  const locked = question.locked && question.masteryStatus !== "Mastered";
-  const mastered = question.masteryStatus === "Mastered";
+  // While `graded` is set, we've just answered in this visit — keep the solver
+  // (with its revealed answer) mounted rather than swapping to lock/mastered.
+  const locked = !graded && question.locked && question.masteryStatus !== "Mastered";
+  const mastered = !graded && question.masteryStatus === "Mastered";
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
@@ -344,9 +354,7 @@ const DomainQuestionSolve = () => {
       <h1 className="mt-3 text-xl font-black leading-snug text-primary sm:text-2xl">
         {question.title}
       </h1>
-      <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-secondary">
-        {question.description}
-      </p>
+      <Markdown className="mt-3 text-[15px]">{question.description}</Markdown>
 
       <div className="mt-7">
         {mastered ? (

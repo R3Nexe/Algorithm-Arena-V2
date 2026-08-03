@@ -26,6 +26,9 @@ const challengeSchema = new mongoose.Schema({
   explanation: { type: String, default: '' },
   // Written-only: the model answer uploaded with the question, revealed on submit.
   modelAnswer: { type: String, default: '' },
+  // Domain-only: top-level subject (e.g. "System Design", "Data Science", "Cyber Security").
+  // Interview Prep groups questions by subject, then by `tags` (topics like cache, DDOS).
+  subject: { type: String, default: '' },
   difficulty: {
     type: String,
     enum: ['Easy', 'Medium', 'Hard'],
@@ -70,6 +73,7 @@ challengeSchema.index({ difficulty: 1, category: 1 });
 challengeSchema.index({ tags: 1 });
 challengeSchema.index({ questionSetId: 1 });
 challengeSchema.index({ type: 1, tags: 1 });
+challengeSchema.index({ type: 1, subject: 1 });
 challengeSchema.index({ title: 'text', description: 'text' });
 
 module.exports = mongoose.model('Challenge', challengeSchema);

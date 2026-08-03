@@ -128,6 +128,17 @@ const buildChallengePayload = (q, setId) => ({
   questionSetId: setId,
 });
 
+// Mirrors the admin UI's read-only state: once a set's deadline has passed,
+// only its questions' reference solutions may still be edited (e.g. to fix a
+// broken one). Everything else must be locked server-side too, since the UI
+// gating alone doesn't stop a direct API call.
+const isPastDeadline = (deadline) => {
+  if (!deadline) return false;
+  const deadlineStr = new Date(deadline).toISOString().split('T')[0];
+  const todayStr = new Date().toISOString().split('T')[0];
+  return deadlineStr < todayStr;
+};
+
 const updateQuestionSet = async (req, res, next) => {
   try {
     const set = await QuestionSet.findById(req.params.id);
@@ -136,32 +147,48 @@ const updateQuestionSet = async (req, res, next) => {
       throw new Error('Question Set not found');
     }
 
-    if (req.body.title) {
-      req.body.title = capitalizeTitle(req.body.title);
-    }
-    if (Array.isArray(req.body.questions)) {
-      req.body.questions = req.body.questions.map((q) => ({
-        ...q,
-        ...(q.title ? { title: capitalizeTitle(q.title) } : {}),
-        points: q.points || getPointsForDifficulty(q.difficulty || 'Easy'),
-      }));
-    }
+    const pastDeadline = isPastDeadline(set.deadline);
+    const questionsProvided = Array.isArray(req.body.questions);
 
-    const fields = ['title', 'weekNumber', 'deadline', 'targetLevel', 'questions', 'status'];
-    fields.forEach((f) => {
-      if (req.body[f] !== undefined) set[f] = req.body[f];
-    });
+    if (pastDeadline) {
+      if (questionsProvided) {
+        req.body.questions.forEach((q, i) => {
+          if (set.questions[i] && q.solutions !== undefined) {
+            set.questions[i].solutions = q.solutions;
+          }
+        });
+      }
+    } else {
+      if (req.body.title) {
+        req.body.title = capitalizeTitle(req.body.title);
+      }
+      if (questionsProvided) {
+        req.body.questions = req.body.questions.map((q) => ({
+          ...q,
+          ...(q.title ? { title: capitalizeTitle(q.title) } : {}),
+          points: q.points || getPointsForDifficulty(q.difficulty || 'Easy'),
+        }));
+      }
+
+      const fields = ['title', 'weekNumber', 'deadline', 'targetLevel', 'questions', 'status'];
+      fields.forEach((f) => {
+        if (req.body[f] !== undefined) set[f] = req.body[f];
+      });
+    }
     await set.save();
 
     // Reconcile the standalone Challenge docs that mirror these questions so
     // Missions/Dashboard stay in sync. Match by title to preserve _ids (and
     // therefore existing submission references) for unchanged questions.
-    if (Array.isArray(req.body.questions)) {
+    // Sourced from `set.questions` (the just-saved, deadline-aware state)
+    // rather than the raw request body, so a locked past-deadline update can
+    // only ever propagate the solutions change, never a spoofed field.
+    if (questionsProvided) {
       const existing = await Challenge.find({ questionSetId: set._id });
       const byTitle = new Map(existing.map((c) => [c.title.toLowerCase(), c]));
       const keepTitles = new Set();
 
-      for (const q of req.body.questions) {
+      for (const q of set.questions) {
         if (!q.title) continue;
         keepTitles.add(q.title.toLowerCase());
         const payload = buildChallengePayload(q, set._id);
